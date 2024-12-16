@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>WebAssembly file information</title>
+  </head>
+  <body>
+    <a name="x"></a>
+    <label for="wasmFile">WASM file: </label><input type="file" id="wasmFile" name="wasmFile" onchange="FileBrwUploadEvent()"><br>
+    <hr>
+    <a href="#x99" id="l99">Header<br></a>
+    <a href="#x00" id="l00">Custom (0)<br></a>
+    <a href="#x01" id="l01">Type (1)<br></a>
+    <a href="#x02" id="l02">Import (2)<br></a>
+    <a href="#x03" id="l03">Function (3)<br></a>
+    <a href="#x04" id="l04">Table (4)<br></a>
+    <a href="#x05" id="l05">Memory (5)<br></a>
+    <a href="#x06" id="l06">Global (6)<br></a>
+    <a href="#x07" id="l07">Export (7)<br></a>
+    <a href="#x80" id="l08">Start (8)<br></a>
+    <a href="#x09" id="l09">Element (9)<br></a>
+    <a href="#x10" id="l10">Code (10)<br></a>
+    <a href="#x11" id="l11">Data (11)<br></a>
+    <a href="#x12" id="l12">DataCount (12)<br></a>
+    <hr>
+    <input type="checkbox" id="infoRaw" name="infoRaw" onchange="printWasmInfo()"><label for="infoRaw"> Section raw binary</label><br>
+    <input type="checkbox" id="infoItem" name="infoItem" checked="checked" onchange="printWasmInfo()"><label for="infoItem"> Item information</label><br> 
+    <input type="checkbox" id="infoItemRaw" name="infoItemRaw" onchange="printWasmInfo()"><label for="infoItemRaw"> Item raw binary</label><br>
+    <input type="checkbox" id="infoCode" name="infoCode" checked="checked" onchange="printWasmInfo()"><label for="infoCode"> Item details</label><br> 
+    Code binary size: <input type="number" id="binSize" name="binSize" value="16" min="1" max="99" onchange="printWasmInfo()">
+    <hr>
+    <div id="divx99">
+      <a name="x99"><h1><a href="#x">^</a> <a id="i99" href="javascript:infoShowHide('99')">?</a> Header</h1></a>
+      <div id="div99">
+        <pre id="wasmInfo99"></pre>
+      </div>
+    </div>
+    <div id="divx00">
+      <a name="x00"><h1><a href="#x">^</a> <a id="i00" href="javascript:infoShowHide('00')">?</a> Custom (0)</h1></a>
+      <div id="div00">
+        <pre id="wasmInfo00"></pre>
+      </div>
+    </div>
+    <div id="divx01">
+      <a name="x01"><h1><a href="#x">^</a> <a id="i01" href="javascript:infoShowHide('01')">?</a> Type (1)</h1></a>
+      <div id="div01">
+        <pre id="wasmInfo01"></pre>
+      </div>
+    </div>
+    <div id="divx02">
+      <a name="x02"><h1><a href="#x">^</a> <a id="i02" href="javascript:infoShowHide('02')">?</a> Import (2)</h1></a>
+      <div id="div02">
+        <pre id="wasmInfo02"></pre>
+      </div>
+    </div>
+    <div id="divx03">
+      <a name="x03"><h1><a href="#x">^</a> <a id="i03" href="javascript:infoShowHide('03')">?</a> Function (3)</h1></a>
+      <div id="div03">
+        <pre id="wasmInfo03"></pre>
+      </div>
+    </div>
+    <div id="divx04">
+      <a name="x04"><h1><a href="#x">^</a> <a id="i04" href="javascript:infoShowHide('04')">?</a> Table (4)</h1></a>
+      <div id="div04">
+        <pre id="wasmInfo04"></pre>
+      </div>
+    </div>
+    <div id="divx05">
+      <a name="x05"><h1><a href="#x">^</a> <a id="i05" href="javascript:infoShowHide('05')">?</a> Memory (5)</h1></a>
+      <div id="div05">
+        <pre id="wasmInfo05"></pre>
+      </div>
+    </div>
+    <div id="divx06">
+      <a name="x06"><h1><a href="#x">^</a> <a id="i06" href="javascript:infoShowHide('06')">?</a> Global (6)</h1></a>
+      <div id="div06">
+        <pre id="wasmInfo06"></pre>
+      </div>
+    </div>
+    <div id="divx07">
+      <a name="x07"><h1><a href="#x">^</a> <a id="i07" href="javascript:infoShowHide('07')">?</a> Export (7)</h1></a>
+      <div id="div07">
+        <pre id="wasmInfo07"></pre>
+      </div>
+    </div>
+    <div id="divx08">
+      <a name="x08"><h1><a href="#x">^</a> <a id="i08" href="javascript:infoShowHide('08')">?</a> Start (8)</h1></a>
+      <div id="div08">
+        <pre id="wasmInfo08"></pre>
+      </div>
+    </div>
+    <div id="divx09">
+      <a name="x09"><h1><a href="#x">^</a> <a id="i09" href="javascript:infoShowHide('09')">?</a> Element (9)</h1></a>
+      <div id="div09">
+        <pre id="wasmInfo09"></pre>
+      </div>
+    </div>
+    <div id="divx10">
+      <a name="x10"><h1><a href="#x">^</a> <a id="i10" href="javascript:infoShowHide('10')">?</a> Code (10)</h1></a>
+      <div id="div10">
+        <pre id="wasmInfo10"></pre>
+      </div>
+    </div>
+    <div id="divx11">
+      <a name="x11"><h1><a href="#x">^</a> <a id="i11" href="javascript:infoShowHide('11')">?</a> Data (11)</h1></a>
+      <div id="div11">
+        <pre id="wasmInfo11"></pre>
+      </div>
+    </div>
+    <div id="divx12">
+      <a name="x12"><h1><a href="#x">^</a> <a id="i12" href="javascript:infoShowHide('12')">?</a> DataCount (12)</h1></a>
+      <div id="div12">
+        <pre id="wasmInfo12"></pre>
+      </div>
+    </div>
+    
+    <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+    <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+    <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+    <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+    <script type='text/javascript'>
+
+
+function FileBrwUploadEvent()
+{
+    FileBrwListName = [];
+    FileBrwListData = [];
+    let FileUploadField = document.getElementById("wasmFile");
+    
+    if (FileUploadField.files.length == 0)
+    {
+        Module.ccall("loadBinary", "null", ["string"], [""]);
+        printWasmInfo();
+    }
+    for (let I = 0; I < FileUploadField.files.length; I++)
+    {
+        const fileName = FileUploadField.files[I].name;
+        const FR = new FileReader();
+        
+        FR.onload = function(e)
+        {
+            const contentB64 = e.target.result.substr(e.target.result.indexOf(',') + 1);
+            Module.ccall("loadBinary", "null", ["string"], [contentB64]);
+            printWasmInfo();
+        };
+        
+        FR.readAsDataURL(FileUploadField.files[I]);
+    }
+}
+
+        let infoState = {};
+
+        function infoShowHide(n)
+        {
+            if (infoState[n])
+            {
+                document.getElementById("i" + n).innerHTML = "+";
+                document.getElementById("div" + n).style["display"] = "none";
+                infoState[n] = false;
+            }
+            else
+            {
+                document.getElementById("i" + n).innerHTML = "-";
+                document.getElementById("div" + n).style["display"] = "";
+                infoState[n] = true;
+            }
+        }
+
+        
+        function initFinish()
+        {
+            infoState["00"] = false;
+            infoState["01"] = false;
+            infoState["02"] = false;
+            infoState["03"] = false;
+            infoState["04"] = false;
+            infoState["05"] = false;
+            infoState["06"] = false;
+            infoState["07"] = false;
+            infoState["08"] = false;
+            infoState["09"] = false;
+            infoState["10"] = false;
+            infoState["11"] = false;
+            infoState["12"] = false;
+            infoState["99"] = false;
+            
+            infoShowHide("00");
+            infoShowHide("01");
+            infoShowHide("02");
+            infoShowHide("03");
+            infoShowHide("04");
+            infoShowHide("05");
+            infoShowHide("06");
+            infoShowHide("07");
+            infoShowHide("08");
+            infoShowHide("09");
+            infoShowHide("10");
+            infoShowHide("11");
+            infoShowHide("12");
+            infoShowHide("99");
+            sectionDisplay();
+        
+            fetch("prog/names_00.txt")
+            .then(_1 => _1.blob())
+            .then(_2 => _2.text())
+            .then(_3 => initNames0(_3));
+            fetch("prog/names_fc.txt")
+            .then(_1 => _1.blob())
+            .then(_2 => _2.text())
+            .then(_3 => initNames1(_3));
+            fetch("prog/names_fd.txt")
+            .then(_1 => _1.blob())
+            .then(_2 => _2.text())
+            .then(_3 => initNames2(_3));
+            fetch("prog/names_fe.txt")
+            .then(_1 => _1.blob())
+            .then(_2 => _2.text())
+            .then(_3 => initNames3(_3));
+            fetch("prog/names_ff.txt")
+            .then(_1 => _1.blob())
+            .then(_2 => _2.text())
+            .then(_3 => initNames4(_3));
+        }
+        
+        let initFinished = 0;
+        
+        function initNames0(X)
+        {
+            Module.ccall("loadNames", "null", ["number", "string"], [0, X]);
+            initFinished++;
+            initProgWork();
+        }
+
+        function initNames1(X)
+        {
+            Module.ccall("loadNames", "null", ["number", "string"], [2, X]);
+            initFinished++;
+            initProgWork();
+        }
+
+        function initNames2(X)
+        {
+            Module.ccall("loadNames", "null", ["number", "string"], [3, X]);
+            initFinished++;
+            initProgWork();
+        }
+        
+        function initNames3(X)
+        {
+            Module.ccall("loadNames", "null", ["number", "string"], [4, X]);
+            initFinished++;
+            initProgWork();
+        }
+
+        function initNames4(X)
+        {
+            Module.ccall("loadNames", "null", ["number", "string"], [5, X]);
+            initFinished++;
+            initProgWork();
+        }
+        
+        function initProgWork()
+        {
+            if (initFinished == 5)
+            {
+                initFinished = 0;
+            }
+        }
+
+        function sectionDisplayOne(n)
+        {
+            if (document.getElementById("wasmInfo" + n).innerText.length > 10)
+            {
+                document.getElementById("l" + n).style["display"] = "";
+                document.getElementById("divx" + n).style["display"] = "";
+            }
+            else
+            {
+                document.getElementById("l" + n).style["display"] = "none";
+                document.getElementById("divx" + n).style["display"] = "none";
+            }
+        }
+
+        function sectionDisplay()
+        {
+            sectionDisplayOne("99");
+            sectionDisplayOne("00");
+            sectionDisplayOne("01");
+            sectionDisplayOne("02");
+            sectionDisplayOne("03");
+            sectionDisplayOne("04");
+            sectionDisplayOne("05");
+            sectionDisplayOne("06");
+            sectionDisplayOne("07");
+            sectionDisplayOne("08");
+            sectionDisplayOne("09");
+            sectionDisplayOne("10");
+            sectionDisplayOne("11");
+            sectionDisplayOne("12");
+        }
+
+        function printWasmInfo()
+        {
+            let s = parseInt(document.getElementById("binSize").value);
+            if (isNaN(s))
+            {
+                s = 8;
+            }
+            if (s < 0) s = 8;
+            const t1 = document.getElementById("infoRaw").checked ? 1 : 0;
+            const t2 = document.getElementById("infoItem").checked ? 1 : 0;
+            const t3 = document.getElementById("infoItemRaw").checked ? 1 : 0;
+            const t4 = document.getElementById("infoCode").checked ? 1 : 0;
+            document.getElementById("wasmInfo99").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s, 99, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo00").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  0, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo01").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  1, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo02").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  2, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo03").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  3, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo04").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  4, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo05").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  5, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo06").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  6, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo07").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  7, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo08").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  8, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo09").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  9, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo10").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s, 10, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo11").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s, 11, t1, t2, t3, t4]);
+            document.getElementById("wasmInfo12").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s, 12, t1, t2, t3, t4]);
+            sectionDisplay();
+        }
+    
+      var Module = {
+        print: (function() {
+          var element = document.getElementById('output');
+          if (element) element.value = ''; // clear browser cache
+          return function(text) {
+            if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+            console.log(text);
+          };
+        })(),
+        setStatus: (text) => {
+          //console.log("setStatus: " + text);
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: (left) => {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+        }
+      };
+      Module.setStatus('Downloading...');
+      window.onerror = (event) => {
+        Module.setStatus('Exception thrown, see JavaScript console');
+        Module.setStatus = (text) => {
+          console.log('[post-exception status] ' + text);
+        };
+      };
+    </script>
+    <script type="text/javascript" src="wasminfo.js"></script>
+  </body>
+</html>
