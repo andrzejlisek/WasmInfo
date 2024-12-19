@@ -134,11 +134,23 @@ void fileStructure::parseImport(sectionInfo &sectionInfo__)
                 break;
             case 0x01: // table
                 ptr++;
-                // 0x70 = funcref
-                // 0x6f = externref
+                sectionSubInfo__._TypeReturn.push_back(raw[ptr]);
                 ptr++;
-                if (raw[ptr] == 0) ptr += 2;
-                if (raw[ptr] == 1) ptr += 3;
+                if (raw[ptr] == 1)
+                {
+                    ptr++;
+                    sectionSubInfo__._TypeReturn.push_back(leb128u(ptr));
+                    ptr += leb128Size;
+                    sectionSubInfo__._TypeReturn.push_back(leb128u(ptr));
+                    ptr += leb128Size;
+                }
+                else
+                {
+                    ptr++;
+                    sectionSubInfo__._TypeReturn.push_back(leb128u(ptr));
+                    ptr += leb128Size;
+                    sectionSubInfo__._TypeReturn.push_back(-1);
+                }
                 sectionSubInfo__._FunctionIdx = parseTableId;
                 parseTableId++;
                 break;
@@ -323,12 +335,50 @@ void fileStructure::parseStart(sectionInfo &sectionInfo__)
 
 void fileStructure::parseDataCount(sectionInfo &sectionInfo__)
 {
-    sectionInfo__.ParseStatus = 2;
+    int ptr = sectionInfo__.SubAddr;
+    sectionInfo__.StartIdx = leb128u(ptr);
+    ptr += leb128Size;
+    sectionInfo__.ParseStatus = (sectionInfo__.Size == (ptr - sectionInfo__.Addr)) ? 1 : 0;
 }
 
 void fileStructure::parseTable(sectionInfo &sectionInfo__)
 {
-    sectionInfo__.ParseStatus = 2;
+    int ptr = sectionInfo__.SubAddr;
+    for (int i = 0; i < sectionInfo__.SubCount; i++)
+    {
+        sectionSubInfo sectionSubInfo__;
+        sectionSubInfo__.ItemAddr = ptr;
+        sectionSubInfo__.Addr = sectionInfo__.Addr;
+        sectionSubInfo__.Index = i;
+
+        // Data type
+        sectionSubInfo__._TypeReturn.push_back(raw[ptr]);
+        ptr++;
+
+        // Limit
+        if (raw[ptr] == 1)
+        {
+            ptr++;
+            sectionSubInfo__._CodeLocalSize.push_back(leb128u(ptr));
+            ptr += leb128Size;
+            sectionSubInfo__._CodeLocalSize.push_back(leb128u(ptr));
+            ptr += leb128Size;
+        }
+        else
+        {
+            ptr++;
+            sectionSubInfo__._CodeLocalSize.push_back(leb128u(ptr));
+            ptr += leb128Size;
+            sectionSubInfo__._CodeLocalSize.push_back(-1);
+        }
+
+        sectionSubInfo__._FunctionIdx = parseTableId;
+        sectionSubInfo__.ItemSize = ptr - sectionSubInfo__.ItemAddr;
+        sectionSubInfo_.push_back(sectionSubInfo__);
+
+        parseTableId++;
+    }
+    sectionInfo__.ParseStatus = (sectionInfo__.Size == (ptr - sectionInfo__.Addr)) ? 1 : 0;
 }
 
 void fileStructure::parseMemory(sectionInfo &sectionInfo__)

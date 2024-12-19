@@ -47,9 +47,9 @@ std::string wasmDecompilerFunction::instrText()
     if (hex::StringIndexOf(s, "[#1#]") >= 0)
     {
         std::string paramList = "";
-        for (int i = 0; i < params.size(); i++)
+        for (int i = instrTextParamList; i < params.size(); i++)
         {
-            if (i > 0)
+            if (i > instrTextParamList)
             {
                 paramList = paramList + ", ";
             }

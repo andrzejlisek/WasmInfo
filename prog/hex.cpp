@@ -171,6 +171,11 @@ int hex::StringIndexOf(std::string S, std::string Substr)
 
 std::string hex::StringFindReplace(std::string S, std::string From, std::string To)
 {
+    if (From == To)
+    {
+        return S;
+    }
+
     if (S == From)
     {
         return To;

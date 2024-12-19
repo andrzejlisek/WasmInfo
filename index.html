@@ -24,11 +24,13 @@
     <a href="#x11" id="l11">Data (11)<br></a>
     <a href="#x12" id="l12">DataCount (12)<br></a>
     <hr>
-    <input type="checkbox" id="infoRaw" name="infoRaw" onchange="printWasmInfo()"><label for="infoRaw"> Section raw binary</label><br>
-    <input type="checkbox" id="infoItem" name="infoItem" checked="checked" onchange="printWasmInfo()"><label for="infoItem"> Item information</label><br> 
-    <input type="checkbox" id="infoItemRaw" name="infoItemRaw" onchange="printWasmInfo()"><label for="infoItemRaw"> Item raw binary</label><br>
-    <input type="checkbox" id="infoCode" name="infoCode" checked="checked" onchange="printWasmInfo()"><label for="infoCode"> Item details</label><br> 
-    Code binary size: <input type="number" id="binSize" name="binSize" value="16" min="1" max="99" onchange="printWasmInfo()">
+    <label for="infoRaw"> Section raw binary</label><input type="checkbox" id="infoRaw" name="infoRaw" onchange="printWasmInfo()"><br>
+    <label for="infoItem"> Item information</label><input type="checkbox" id="infoItem" name="infoItem" checked="checked" onchange="printWasmInfo()"><br> 
+    <label for="infoItemRaw"> Item raw binary</label><input type="checkbox" id="infoItemRaw" name="infoItemRaw" onchange="printWasmInfo()"><br>
+    <label for="infoCode"> Item details</label><input type="checkbox" id="infoCode" name="infoCode" checked="checked" onchange="printWasmInfo()"><br> 
+    Code binary size: <input type="number" id="binSize" name="binSize" value="16" min="1" max="99" onchange="printWasmInfo()"><br>
+    Code kind: <select id="codeType" onchange="printWasmInfo()"><option selected="selected">None</option><option>Disassembled</option><option>Decomplided</option><option>Both</option></select><br>
+    Branches: <select id="codeBranch" onchange="printWasmInfo()"><option selected="selected">Numbers and blocks</option><option>Labels with blocks</option><option>Labels only</option></select><br>
     <hr>
     <div id="divx99">
       <a name="x99"><h1><a href="#x">^</a> <a id="i99" href="javascript:infoShowHide('99')">?</a> Header</h1></a>
@@ -313,20 +315,22 @@ function FileBrwUploadEvent()
             const t2 = document.getElementById("infoItem").checked ? 1 : 0;
             const t3 = document.getElementById("infoItemRaw").checked ? 1 : 0;
             const t4 = document.getElementById("infoCode").checked ? 1 : 0;
-            document.getElementById("wasmInfo99").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s, 99, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo00").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  0, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo01").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  1, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo02").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  2, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo03").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  3, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo04").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  4, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo05").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  5, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo06").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  6, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo07").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  7, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo08").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  8, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo09").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s,  9, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo10").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s, 10, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo11").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s, 11, t1, t2, t3, t4]);
-            document.getElementById("wasmInfo12").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number"], [s, 12, t1, t2, t3, t4]);
+            const t5 = document.getElementById("codeType").selectedIndex;
+            const t6 = document.getElementById("codeBranch").selectedIndex;
+            document.getElementById("wasmInfo99").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s, 99, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo00").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s,  0, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo01").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s,  1, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo02").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s,  2, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo03").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s,  3, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo04").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s,  4, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo05").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s,  5, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo06").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s,  6, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo07").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s,  7, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo08").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s,  8, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo09").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s,  9, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo10").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s, 10, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo11").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s, 11, t1, t2, t3, t4, t5, t6]);
+            document.getElementById("wasmInfo12").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number"], [s, 12, t1, t2, t3, t4, t5, t6]);
             sectionDisplay();
         }
     

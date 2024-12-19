@@ -12,12 +12,12 @@ t`if ([~0~])[\n]{`1`0`if ([~0~])[\n]{
 `}`0`0`}
 u`br([~0~]);`0`0`br([~0~])
 u`br_if([~0~]);`1`0`br_if([~0~], [~1~])
-uxu`br_table({[~0~]}, [~1~]);`0`0`br_table({})
-`return;`0`0`return([#1#])
+uxu`br_table({[~0~]});`1`0`br_table({[~0~]}, [~1~])
+`return;`0`0`return ([#1#])
 u`call(function[[~0~]]); // [#0#]`0`0`[#0#]([#1#])
-uu`call_indirect(type[[~0~]], [~1~]);`0`0`call_indirect([#1#])
+uu`call_indirect(type[[~0~]], [~1~]); // [@0@]`0`0`call_indirect(type[[~0~]], [~1~], [#1#])
 u`return_call(function[[~0~]]); // [#0#]`0`0`return [#0#]([#1#])
-uu`return_call_indirect(type[[~0~]], [~1~]);`0`0`return_call_indirect([#1#])
+uu`return_call_indirect(type[[~0~]], [~1~]); // [@0@]`0`0`return_call_indirect(type[[~0~]], [~1~], [#1#])
 ``0`0`
 ``0`0`
 ``0`0`
@@ -61,8 +61,8 @@ uu`i32_store16([~0~], [~1~]);`2`0`i32_store16([~0~], [~1~], [~2~], [~3~])
 uu`i64_store8([~0~], [~1~]);`2`0`i64_store8([~0~], [~1~], [~2~], [~3~])
 uu`i64_store16([~0~], [~1~]);`2`0`i64_store16([~0~], [~1~], [~2~], [~3~])
 uu`i64_store32([~0~], [~1~]);`2`0`i64_store32([~0~], [~1~], [~2~], [~3~])
-u`memory_size(memory[[~0~]]);`0`1`memory_size()
-u`memory_grow(memory[[~0~]]);`1`1`memory_grow([~0~])
+u`memory_size(memory[[~0~]]);`0`1`memory_size(memory[[~0~]])
+u`memory_grow(memory[[~0~]]);`1`1`memory_grow(memory[[~0~]])
 i32`i32_const([~0~]);`0`1`[~0~]
 i64`i64_const([~0~]L);`0`1`[~0~]L
 f32`f32_const([~0~]f);`0`1`[~0~]f

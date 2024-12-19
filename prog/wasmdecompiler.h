@@ -11,9 +11,15 @@
 class wasmDecompiler
 {
 private:
-    bool useSimplified = true;
+    bool debugNoStackSimplify = false;
     bool debugInfo = false;
-    int debugOptimizeIterations = 1000000000;
+    bool debugNoFold = false;
+    bool debugNoLabelOptimize = false;
+
+    int decompBranch = 0;
+    int branchDepthMagicNum = 9999;
+
+    bool debugIsFunc(std::string funcName);
 
     struct dataField
     {
@@ -32,6 +38,7 @@ private:
     int currentDepth;
     int currentStack;
 
+    void convertBlockToLabels();
     void codeOptimize();
 
     int lastOpcode;
@@ -54,7 +61,7 @@ public:
     codeDef codeDef_[6][256];
 
     std::string funcName;
-    void reset(std::string funcName_);
+    void reset(std::string funcName_, int decompBranch_);
     void addCommand(unsigned char * raw, int addr, int size, std::string par0, std::string par1, std::string par2);
     void addGlobal(int idx, int dataType);
     void addParam(int idx, int dataType);
@@ -62,6 +69,8 @@ public:
     void addReturn(int idx, int dataType);
     std::string printCommand(int idx);
     std::string valueTypeName(int typeSig);
+private:
+    std::string dataName(int idx, int t);
 };
 
 #endif // WASMDECOMPILER_H

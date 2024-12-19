@@ -68,9 +68,9 @@ extern "C"
     }
 
     EMSCRIPTEN_KEEPALIVE
-    const char * getInfo(int codeBinSize, int sectionId, int infoRaw, int infoItem, int infoItemRaw, int infoCode)
+    const char * getInfo(int codeBinSize, int sectionId, int infoRaw, int infoItem, int infoItemRaw, int infoCode, int decompType, int decompBranch)
     {
-        wasmText = fileStructure_.print(codeBinSize, sectionId, infoRaw, infoItem, infoItemRaw, infoCode);
+        wasmText = fileStructure_.print(codeBinSize, sectionId, infoRaw, infoItem, infoItemRaw, infoCode, decompType, decompBranch);
         return wasmText.c_str();
     }
 }

@@ -11,6 +11,11 @@ class wasmDecompilerFunction
 {
 private:
 public:
+    int stackI = 0;
+    int stackP = 0;
+    int stackR = 0;
+    int stackO = 0;
+    bool stackPrint = false;
     wasmDecompilerFunction();
     std::string name = "";
     std::string returnName = "";
@@ -21,11 +26,14 @@ public:
     bool blockFold = false;
     std::vector<unsigned char> originalInstr;
     std::string instrText();
+    int instrTextParamList = 0;
     void paramAdd(std::string text);
     void additionalInstr(int currentDepth, std::string instrResult, std::string instrParam, int instrId, std::string comment);
     std::string comment = "";
     int id = 0;
     bool printComma = false;
+    int branchDepth = 0;
+    int branchType = 0;
 };
 
 #endif // WASMDECOMPILERFUNCTION_H

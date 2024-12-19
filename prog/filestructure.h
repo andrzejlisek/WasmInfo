@@ -87,6 +87,7 @@ private:
     int parseInstructions(int addr, sectionSubInfo &sectionSubInfo__);
     std::string instructionText(codeInstr codeInstr_, int fidx);
     std::string itemInfoText(sectionSubInfo &sectionSubInfo__);
+    std::string sizeText(int minVal, int maxVal);
 public:
     fileStructure();
     void parse(uchar * raw_, int rawSize_);
@@ -95,17 +96,17 @@ public:
     void printFunction(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode);
     void printTable(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode);
     void printMemory(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode);
-    void printGlobal(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode);
+    void printGlobal(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch);
     void printExport(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode);
     void printStart(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode);
     void printElement(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode);
-    void printCode(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode);
-    void printData(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode);
+    void printCode(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch);
+    void printData(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch);
     void printDataCount(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode);
     void printRaw(std::stringstream &ss, int rawAddr, int rawSize);
-    std::string print(int codeBinSize_, int sectionId, bool infoRaw, bool infoItem, bool infoItemRaw, bool infoCode);
+    std::string print(int codeBinSize_, int sectionId, bool infoRaw, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch);
     void printCodeText(std::stringstream &ss, int addr, int count);
-    void printCodeInstr(std::stringstream &ss, std::vector<codeInstr> &codeInstr_, int fidx);
+    void printCodeInstr(std::stringstream &ss, std::vector<codeInstr> &codeInstr_, int fidx, int decompType);
 
     void loadNames(int setType, std::string nameText);
 private:

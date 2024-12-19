@@ -49,6 +49,8 @@ The **WasmInfo** has these options to view the file details:
 * **Item raw binary** \- The binary data of each item separately\.
 * **Item details** \- The item details depending on section and item\.
 * **Code binary size** \- The number of bytes between address and code text in some sections, which contains the data\.
+* **Code kind** \- The code kind to display in execudion code containing sections \(**Global**, **Code**, **Data**\)\.
+* **Branches** \- Branch interpretation and conversion in decompiled code\.
 
 # Execution code analysis
 

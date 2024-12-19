@@ -137,19 +137,15 @@ int fileStructure::parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__)
         {
             int vecSize = leb128u(ptr + InstrSize);
             InstrSize += leb128Size;
-            codeInstr_.Param0 = "{";
+            codeInstr_.Param0 = "";
             for (int i = 0; i < vecSize; i++)
             {
-                if (i > 0)
-                {
-                    codeInstr_.Param0 = codeInstr_.Param0 + ",";
-                }
                 codeInstr_.Param0 = codeInstr_.Param0 + std::to_string(leb128u(ptr + InstrSize));
+                codeInstr_.Param0 = codeInstr_.Param0 + ", ";
                 InstrSize += leb128Size;
             }
-            codeInstr_.Param0 = codeInstr_.Param0 + "}";
         }
-        codeInstr_.Param1 = std::to_string(leb128u(ptr + InstrSize));
+        codeInstr_.Param0 = codeInstr_.Param0 + std::to_string(leb128u(ptr + InstrSize));
         InstrSize += leb128Size;
     }
 
@@ -280,6 +276,11 @@ std::string fileStructure::instructionText(codeInstr codeInstr_, int fidx)
     if (hex::StringIndexOf(text, "[#0#]") > 0)
     {
         text = hex::StringFindReplace(text, "[#0#]", getFunctionNameById(-1, atoi(codeInstr_.Param0.c_str()), 0));
+    }
+    if (hex::StringIndexOf(text, "[@0@]") > 0)
+    {
+        int dummy = 0;
+        text = hex::StringFindReplace(text, "[@0@]", getFunctionType(atoi(codeInstr_.Param0.c_str()), "{~}", dummy));
     }
 
     if ((hex::StringIndexOf(text, "[$0g]") > 0) || (hex::StringIndexOf(text, "[$0gg]") > 0))
