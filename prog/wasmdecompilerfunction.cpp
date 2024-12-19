@@ -43,6 +43,18 @@ std::string wasmDecompilerFunction::instrText()
     for (int i = 0; i < params.size(); i++)
     {
         s = hex::StringFindReplace(s, "[~" + std::to_string(i) + "~]", params[i].get()->instrText());
+        if (hex::StringIndexOf(s, "[!" + std::to_string(i) + "!]") >= 0)
+        {
+            std::string repl = params[i].get()->instrText();
+            if (repl.size() > 0)
+            {
+                if ((repl[0] == '-') || (repl[0] == '+'))
+                {
+                    repl = "(" + repl + ")";
+                }
+            }
+            s = hex::StringFindReplace(s, "[!" + std::to_string(i) + "!]", repl);
+        }
     }
     if (hex::StringIndexOf(s, "[#1#]") >= 0)
     {
