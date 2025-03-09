@@ -16,7 +16,7 @@ Aparts from the code analysis, the **WasmInfo** produces whole information about
 
 Most sections splits into the items\. Because the min goal is reading the execution code, not all section features are implemented, especially those not related to execution code reading\.
 
-Application online: [https://andrzejlisek\.github\.io/WasmInfo/index\.html](https://andrzejlisek.github.io/TextPaintWeb/index.html "https://andrzejlisek.github.io/TextPaintWeb/index.html") 
+Application online: [https://andrzejlisek\.github\.io/WasmInfo/index\.html](https://andrzejlisek.github.io/WasmInfo/index.html "https://andrzejlisek.github.io/WasmInfo/index.html") 
 
 # Analyzing the WASM file
 
