@@ -12,6 +12,73 @@ bool fileStructure::isCodeGood(sectionSubInfo &sectionSubInfo__)
     return true;
 }
 
+std::string fileStructure::valueTypeNameEx(int valueType)
+{
+    bool isNum = false;
+    if (valueType < 0) { valueType = 0 - valueType; isNum = true; }
+    if (valueType < 0x40)
+    {
+        for (int i = 0; i < sectionInfo_.size(); i++)
+        {
+            if (sectionInfo_[i].Id == 1)
+            {
+                for (int ii = sectionInfo_[i].SubIdx1; ii < sectionInfo_[i].SubIdx2; ii++)
+                {
+                    if (sectionSubInfo_[ii].Index == valueType)
+                    {
+                        std::string s = "";
+                        if (isNum)
+                        {
+                            s = std::to_string(sectionSubInfo_[ii]._TypeParams.size()) + "|" + std::to_string(sectionSubInfo_[ii]._TypeReturn.size());
+                        }
+                        else
+                        {
+                            for (int iii = 0; iii < sectionSubInfo_[ii]._TypeParams.size(); iii++)
+                            {
+                                if (iii > 0) s = s + "_";
+                                s = s + wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeParams[iii]);
+                            }
+                            s = s + "|";
+                            for (int iii = 0; iii < sectionSubInfo_[ii]._TypeReturn.size(); iii++)
+                            {
+                                if (iii > 0) s = s + "_";
+                                s = s + wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[iii]);
+                            }
+                        }
+                        return s;
+                    }
+                }
+            }
+        }
+        if (isNum)
+        {
+            return "0";
+        }
+        else
+        {
+            return "void|void";
+        }
+    }
+    else
+    {
+        if (isNum)
+        {
+            if (valueType == 0x40)
+            {
+                return "0";
+            }
+            else
+            {
+                return "1";
+            }
+        }
+        else
+        {
+            return wasmDecompiler_.valueTypeName(valueType);
+        }
+    }
+}
+
 int fileStructure::parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__)
 {
     int InstrSize = 0;
@@ -66,7 +133,8 @@ int fileStructure::parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__)
     if (instrParamType == "t")
     {
         instrParamType = "";
-        codeInstr_.Param0 = wasmDecompiler_.valueTypeName(raw[ptr + 1]);
+        codeInstr_.Param0 = valueTypeNameEx(raw[ptr + 1]);
+        codeInstr_.Param1 = valueTypeNameEx(0 - (int)(raw[ptr + 1]));
         InstrSize = 2;
     }
 
@@ -84,7 +152,7 @@ int fileStructure::parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__)
                 {
                     codeInstr_.Param0 = codeInstr_.Param0 + ",";
                 }
-                codeInstr_.Param0 = codeInstr_.Param0 + wasmDecompiler_.valueTypeName(raw[ptr + InstrSize]);
+                codeInstr_.Param0 = codeInstr_.Param0 + valueTypeNameEx(raw[ptr + InstrSize]);
                 InstrSize++;
             }
             codeInstr_.Param0 = codeInstr_.Param0;
@@ -96,7 +164,7 @@ int fileStructure::parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__)
     {
         instrParamType = "";
         InstrSize = 1;
-        codeInstr_.Param0 = std::to_string(leb128s(ptr + InstrSize, 32));
+        codeInstr_.Param0 = wasmDecompiler_.dataFieldDictionarySet(std::to_string(leb128s(ptr + InstrSize, 32)), wasmDecompiler_.fieldType_i32, "const", 0);
         InstrSize += leb128Size;
     }
 
@@ -104,21 +172,21 @@ int fileStructure::parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__)
     {
         instrParamType = "";
         InstrSize = 1;
-        codeInstr_.Param0 = std::to_string(leb128s(ptr + InstrSize, 64));
+        codeInstr_.Param0 = wasmDecompiler_.dataFieldDictionarySet(std::to_string(leb128s(ptr + InstrSize, 64)), wasmDecompiler_.fieldType_i64, "const", 0);
         InstrSize += leb128Size;
     }
 
     if (instrParamType == "f32")
     {
         instrParamType = "";
-        codeInstr_.Param0 = f32tostr(ptr + 1);
+        codeInstr_.Param0 = wasmDecompiler_.dataFieldDictionarySet(f32tostr(ptr + 1), wasmDecompiler_.fieldType_f32, "const", 0);
         InstrSize = 5;
     }
 
     if (instrParamType == "f64")
     {
         instrParamType = "";
-        codeInstr_.Param0 = f64tostr(ptr + 1);
+        codeInstr_.Param0 = wasmDecompiler_.dataFieldDictionarySet(f64tostr(ptr + 1), wasmDecompiler_.fieldType_f64, "const", 0);
         InstrSize = 9;
     }
 
@@ -227,22 +295,28 @@ int fileStructure::parseInstructions(int addr, sectionSubInfo &sectionSubInfo__)
     int testN = 1000000000;
     int ptr = addr;
     int codeLength = 0;
+    wasmDecompiler_.dataFieldDictionary.clear();
     while ((BlockDepth > 0) && (testN > 0))
     {
         int InstrS = parseInstruction(ptr, sectionSubInfo__);
         switch (sectionSubInfo__._CodeInstr[sectionSubInfo__._CodeInstr.size() - 1].Opcode)
         {
-            case 0x05: BlockDepth--; break;
-            case 0x0B: BlockDepth--; break;
+            case 0x05: BlockDepth--; break; // else
+            case 0x07: BlockDepth--; break; // catch
+            case 0x0B: BlockDepth--; break; // end
+            case 0x19: BlockDepth--; break; // catch_all
             case -1: testN = 0; break;
         }
         sectionSubInfo__._CodeInstr[sectionSubInfo__._CodeInstr.size() - 1].Depth = BlockDepth;
         switch (sectionSubInfo__._CodeInstr[sectionSubInfo__._CodeInstr.size() - 1].Opcode)
         {
-            case 0x02: BlockDepth++; break;
-            case 0x03: BlockDepth++; break;
-            case 0x04: BlockDepth++; break;
-            case 0x05: BlockDepth++; break;
+            case 0x02: BlockDepth++; break; // block
+            case 0x03: BlockDepth++; break; // loop
+            case 0x04: BlockDepth++; break; // if
+            case 0x05: BlockDepth++; break; // else
+            case 0x06: BlockDepth++; break; // try
+            case 0x07: BlockDepth++; break; // catch
+            case 0x19: BlockDepth++; break; // catch_all
         }
 
         ptr += InstrS;
@@ -250,6 +324,11 @@ int fileStructure::parseInstructions(int addr, sectionSubInfo &sectionSubInfo__)
 
 
         testN--;
+    }
+    sectionSubInfo__._CodeDataFieldDictionary.clear();
+    for (int i = 0; i < wasmDecompiler_.dataFieldDictionary.size(); i++)
+    {
+        sectionSubInfo__._CodeDataFieldDictionary.push_back(wasmDecompiler_.dataFieldDictionary[i]);
     }
     return codeLength;
 }
@@ -269,6 +348,10 @@ std::string fileStructure::instructionText(codeInstr codeInstr_, int fidx)
         case 0xFE: text = wasmDecompiler_.codeDef_[4][codeInstr_.Opcode & 255].nameAsm; break;
         case 0xFF: text = wasmDecompiler_.codeDef_[5][codeInstr_.Opcode & 255].nameAsm; break;
     }
+
+    text = hex::StringFindReplace(text, "[~c~]", wasmDecompiler_.dataFieldDictionaryDisplay(codeInstr_.Param0));
+    text = hex::StringFindReplace(text, "[~l~]", wasmDecompiler_.dataFieldDictionaryDisplay(wasmDecompiler_.dataFieldDictionaryGetVar("local", atoi(codeInstr_.Param0.c_str()))));
+    text = hex::StringFindReplace(text, "[~g~]", wasmDecompiler_.dataFieldDictionaryDisplay(wasmDecompiler_.dataFieldDictionaryGetVar("global", atoi(codeInstr_.Param0.c_str()))));
 
     text = hex::StringFindReplace(text, "[~0~]", codeInstr_.Param0);
     text = hex::StringFindReplace(text, "[~1~]", codeInstr_.Param1);
@@ -312,7 +395,7 @@ void fileStructure::loadNames(int setType, std::string nameText)
         wasmDecompiler_.codeDef_[setType][i].stackParam = "";
         wasmDecompiler_.codeDef_[setType][i].stackResult = "";
         wasmDecompiler_.codeDef_[setType][i].nameDecomp = "";
-        wasmDecompiler_.codeDef_[setType][i].nameAsm = "";
+        wasmDecompiler_.codeDef_[setType][i].stackResultType = -1;
     }
 
     int lineItem = 0;
@@ -354,6 +437,41 @@ void fileStructure::loadNames(int setType, std::string nameText)
                     wasmDecompiler_.codeDef_[setType][ptr].nameDecomp.push_back(nameText[i]);
                     break;
             }
+        }
+    }
+
+    for (int i = 0; i < 256; i++)
+    {
+        wasmDecompiler_.codeDef_[setType][i].stackResultType = -1;
+        if (wasmDecompiler_.codeDef_[setType][i].stackResult == "par0")
+        {
+            wasmDecompiler_.codeDef_[setType][i].stackResultType = wasmDecompiler::fieldTypeVariable;
+            wasmDecompiler_.codeDef_[setType][i].stackResult = "1";
+        }
+        if (wasmDecompiler_.codeDef_[setType][i].stackResult == "i32")
+        {
+            wasmDecompiler_.codeDef_[setType][i].stackResultType = wasmDecompiler::fieldType_i32;
+            wasmDecompiler_.codeDef_[setType][i].stackResult = "1";
+        }
+        if (wasmDecompiler_.codeDef_[setType][i].stackResult == "i64")
+        {
+            wasmDecompiler_.codeDef_[setType][i].stackResultType = wasmDecompiler::fieldType_i64;
+            wasmDecompiler_.codeDef_[setType][i].stackResult = "1";
+        }
+        if (wasmDecompiler_.codeDef_[setType][i].stackResult == "f32")
+        {
+            wasmDecompiler_.codeDef_[setType][i].stackResultType = wasmDecompiler::fieldType_f32;
+            wasmDecompiler_.codeDef_[setType][i].stackResult = "1";
+        }
+        if (wasmDecompiler_.codeDef_[setType][i].stackResult == "f64")
+        {
+            wasmDecompiler_.codeDef_[setType][i].stackResultType = wasmDecompiler::fieldType_f64;
+            wasmDecompiler_.codeDef_[setType][i].stackResult = "1";
+        }
+        if (wasmDecompiler_.codeDef_[setType][i].stackResult == "v128")
+        {
+            wasmDecompiler_.codeDef_[setType][i].stackResultType = wasmDecompiler::fieldType_v128;
+            wasmDecompiler_.codeDef_[setType][i].stackResult = "1";
         }
     }
 }

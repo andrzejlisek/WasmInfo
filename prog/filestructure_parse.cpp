@@ -341,6 +341,26 @@ void fileStructure::parseDataCount(sectionInfo &sectionInfo__)
     sectionInfo__.ParseStatus = (sectionInfo__.Size == (ptr - sectionInfo__.Addr)) ? 1 : 0;
 }
 
+void fileStructure::parseTag(sectionInfo &sectionInfo__)
+{
+    int ptr = sectionInfo__.SubAddr;
+    for (int i = 0; i < sectionInfo__.SubCount; i++)
+    {
+        sectionSubInfo sectionSubInfo__;
+        sectionSubInfo__.ItemAddr = ptr;
+        sectionSubInfo__.Addr = ptr;
+        sectionSubInfo__.Index = i;
+        sectionSubInfo__._TypeReturn.push_back(leb128u(ptr));
+        ptr += leb128Size;
+        sectionSubInfo__._TypeReturn.push_back(leb128u(ptr));
+        ptr += leb128Size;
+
+        sectionSubInfo__.ItemSize = ptr - sectionSubInfo__.ItemAddr;
+        sectionSubInfo_.push_back(sectionSubInfo__);
+    }
+    sectionInfo__.ParseStatus = (sectionInfo__.Size == (ptr - sectionInfo__.Addr)) ? 1 : 0;
+}
+
 void fileStructure::parseTable(sectionInfo &sectionInfo__)
 {
     int ptr = sectionInfo__.SubAddr;
@@ -472,6 +492,7 @@ void fileStructure::parse(uchar * raw_, int rawSize_)
             case 9:
             case 10:
             case 11:
+            case 13:
                 {
                     int SectionSubCount = leb128u(raw_ptr_);
                     raw_ptr_ += leb128Size;
@@ -498,6 +519,7 @@ void fileStructure::parse(uchar * raw_, int rawSize_)
             case 10: parseCode(sectionInfo__); break;
             case 11: parseData(sectionInfo__); break;
             case 12: parseDataCount(sectionInfo__); break;
+            case 13: parseTag(sectionInfo__); break;
         }
 
         sectionInfo_.push_back(sectionInfo__);

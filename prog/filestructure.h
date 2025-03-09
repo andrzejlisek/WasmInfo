@@ -65,6 +65,8 @@ private:
         std::vector<int> _CodeLocalSize;
 
         std::vector<codeInstr> _CodeInstr;
+
+        std::vector<wasmDecompiler::dataField2> _CodeDataFieldDictionary;
     };
     int parseFunctionId;
     int parseMemoId;
@@ -82,7 +84,9 @@ private:
     void parseElement(sectionInfo &sectionInfo__);
     void parseCode(sectionInfo &sectionInfo__);
     void parseStart(sectionInfo &sectionInfo__);
+    void parseTag(sectionInfo &sectionInfo__);
     bool isCodeGood(sectionSubInfo &sectionSubInfo__);
+    std::string valueTypeNameEx(int valueType);
     int parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__);
     int parseInstructions(int addr, sectionSubInfo &sectionSubInfo__);
     std::string instructionText(codeInstr codeInstr_, int fidx);
@@ -103,8 +107,9 @@ public:
     void printCode(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch);
     void printData(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch);
     void printDataCount(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode);
+    void printTag(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode);
     void printRaw(std::stringstream &ss, int rawAddr, int rawSize);
-    std::string print(int codeBinSize_, int sectionId, bool infoRaw, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch);
+    std::string print(int codeBinSize_, int sectionId, bool infoRaw, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch, int decompOpts);
     void printCodeText(std::stringstream &ss, int addr, int count);
     void printCodeInstr(std::stringstream &ss, std::vector<codeInstr> &codeInstr_, int fidx, int decompType);
 
@@ -113,6 +118,8 @@ private:
     std::string correctFunctionName(std::string funcName);
     int getVarTypeG(int idx);
     int getVarTypeL(int idx, int fidx_);
+    std::string getGlobalVarName(int num, bool def, int valType);
+    int getTypeListItemByTag(int num);
     std::string getFunctionType(int funcType, std::string funcName, int &localNum);
     std::string getFunctionName(int idx, int fidx, int &localNum);
     std::string getFunctionNameById(int idx, int fidx, int localNum);

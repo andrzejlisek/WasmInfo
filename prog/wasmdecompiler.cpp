@@ -14,6 +14,7 @@ std::string wasmDecompiler::valueTypeName(int typeSig)
     switch (typeSig)
     {
         case 0x00: return "value";
+        case 0x01: return "u";     // !!!!
         case 0x40: return "void";
         case 0x7F: return "i32";
         case 0x7E: return "i64";
@@ -27,15 +28,17 @@ std::string wasmDecompiler::valueTypeName(int typeSig)
     }
 }
 
-void wasmDecompiler::reset(std::string funcName_, int decompBranch_)
+void wasmDecompiler::reset(std::string funcName_, int decompBranch_, std::vector<dataField2> dataFieldDictionary_)
 {
     decompBranch = decompBranch_;
     lastOpcode = 0;
     funcName = funcName_;
-    dataGlobal.clear();
-    dataLocal.clear();
-    dataParam.clear();
-    dataReturn.clear();
+    dataFieldDictionary.clear();
+
+    for (int i = 0; i < dataFieldDictionary_.size(); i++)
+    {
+        dataFieldDictionary.push_back(dataFieldDictionary_[i]);
+    }
 
     WDF.depth = 0;
     WDF.isFoldable = false;
@@ -47,457 +50,211 @@ void wasmDecompiler::reset(std::string funcName_, int decompBranch_)
     currentStack = 0;
     stackSizeBlock.clear();
     stackSizeBlock.push_back(0);
-    tempVarCounter = 1;
+    stackSizeIf.clear();
+    stackSizeIf.push_back(-1);
+    stackSizeDiff.clear();
+    stackSizeDiff.push_back(0);
+    tempVarCounterP = 1;
+    tempVarCounterR = 1;
 }
 
-void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::string par0, std::string par1, std::string par2)
+std::string wasmDecompiler::dataFieldDictionaryGetVar(std::string category, int num)
 {
-    // Adding final "end" command requires adding additional "return" command when the function returns value and the stack is not empty
-    if ((currentDepth == 1) && (raw[addr] == 0x0B))
+    if (category == "param")
     {
-        if (currentStack > 0)
+        category = "local";
+    }
+    for (int i = (dataFieldDictionary.size() - 1); i >= 0; i--)
+    {
+        if ((dataFieldDictionary[i].fieldCategory == category) && (dataFieldDictionary[i].fieldNumber == num))
         {
-            unsigned char * dummyRaw = new unsigned char[4];
-            dummyRaw[0] = 0x0F;
-            dummyRaw[1] = 0x00;
-            dummyRaw[2] = 0x00;
-            dummyRaw[3] = 0x00;
-            switch (lastOpcode)
-            {
-                case 0x0F: // return
-                case 0x12: // return_call
-                case 0x13: // return_call_indirect
-                case 0x15: // return_call_ref
-                    break;
-                default:
-                    break;
-            }
-            addCommand(dummyRaw, 0, 1, "", "", "");
-            delete[] dummyRaw;
+            return dataFieldDictionary[i].fieldId;
         }
     }
+    return "ERROR[" + category + "_" + std::to_string(num) + "]";
+}
 
+std::string wasmDecompiler::dataFieldDictionaryGetConst(int type, std::string val)
+{
+    return "fld_" + valueTypeName(type & 255) + "_" + val + "_fld";
+}
 
-    // Create dummy instructions containing the function name
-    if (WDF.params.size() == 0)
+int wasmDecompiler::dataFieldDictionaryGetType(std::string category, int num)
+{
+    if (num < 0)
     {
-        if (funcName != "")
+        for (int i = (dataFieldDictionary.size() - 1); i >= 0; i--)
         {
-            std::string s = "";
-            if (dataReturn.size() == 0) s = "void";
-            for (int i = 0; i < dataReturn.size(); i++)
+            if (dataFieldDictionary[i].fieldId == category)
             {
-                if (i > 0)
-                {
-                    s = s + "_";
-                }
-                s = s + valueTypeName(dataReturn[i].type);
+                return dataFieldDictionary[i].fieldType;
             }
-            s = s + " " + funcName + "(";
-            if (dataParam.size() == 0) s = s + "void";
-            for (int i = 0; i < dataParam.size(); i++)
-            {
-                if (i > 0)
-                {
-                    s = s + ", ";
-                }
-                s = s + valueTypeName(dataParam[i].type) + " " + dataParam[i].name;
-            }
-            s = s + ")";
-            WDF.additionalInstr(0, "", s, 0, "");
-        }
-        WDF.additionalInstr(0, "", "{", 0, "");
-    }
-
-
-    int instrId = WDF.params.size();
-
-    std::shared_ptr<wasmDecompilerFunction> Instr = std::make_shared<wasmDecompilerFunction>();
-    Instr.get()->id = instrId;
-    int opCode = raw[addr];
-    int nameTbl = 0;
-    switch (opCode)
-    {
-        case 0xFB: nameTbl = 1; opCode = (opCode << 8) + (int)(raw[addr + 1]); break;
-        case 0xFC: nameTbl = 2; opCode = (opCode << 8) + (int)(raw[addr + 1]); break;
-        case 0xFD: nameTbl = 3; opCode = (opCode << 8) + (int)(raw[addr + 1]); break;
-        case 0xFE: nameTbl = 4; opCode = (opCode << 8) + (int)(raw[addr + 1]); break;
-    }
-
-    // Distinguish the SIMD planes
-    if ((nameTbl == 3) && (raw[addr + 1] >= 0x80))
-    {
-        if (raw[addr + 2] == 0x02)
-        {
-            opCode = opCode + 0x0200;
-            nameTbl = 5;
-        }
-    }
-
-    lastOpcode = opCode;
-    Instr.get()->name = codeDef_[nameTbl][opCode & 255].nameDecomp;
-
-    int stackP = atoi(codeDef_[nameTbl][opCode & 255].stackParam.c_str());
-    int stackR = atoi(codeDef_[nameTbl][opCode & 255].stackResult.c_str());
-    std::string codeParamStr = codeDef_[nameTbl][opCode & 255].paramAsm;
-
-    bool stackSimplified = !debugNoStackSimplify;
-
-    switch (opCode)
-    {
-        case 0x02: // block
-            stackSimplified = false;
-            Instr.get()->branchType = 1;
-            break;
-        case 0x04: // if
-        case 0x05: // else
-            stackSimplified = false;
-            Instr.get()->branchType = 2;
-            break;
-        case 0x03: // loop
-            stackSimplified = false;
-            Instr.get()->branchType = 3;
-            break;
-        case 0x0B: // end
-            stackSimplified = false;
-            Instr.get()->branchType = 4;
-            break;
-        case 0x10: // call
-        case 0x11: // call_indirect
-        case 0x12: // return_call
-        case 0x13: // return_call_indirect
-        case 0x14: // call_ref
-        case 0x15: // return_call_ref
-            {
-                int idxFind1 = par2.find("`");
-                int idxFind2 = par2.find("`", idxFind1 + 1);
-
-                std::string parStackP = par2.substr(0, idxFind1);
-                std::string parStackR = par2.substr(idxFind1 + 1, idxFind2 - idxFind1 - 1);
-                std::string parFuncName = par2.substr(idxFind2 + 1);
-
-                stackP = atoi(parStackP.c_str());
-                stackR = atoi(parStackR.c_str());
-
-                if ((opCode == 0x11) || (opCode == 0x13))
-                {
-                    stackP++;
-                    Instr.get()->paramAdd(par0);
-                    Instr.get()->paramAdd(par1);
-                    Instr.get()->instrTextParamList = 2;
-                }
-
-                Instr.get()->name = hex::StringFindReplace(Instr.get()->name, "[#0#]", parFuncName);
-            }
-            break;
-        case 0x0F: // return
-            {
-                stackP = currentStack;
-            }
-            break;
-        case 0x20: // local.get
-        case 0x21: // local.set
-        case 0x22: // local.tee
-        case 0x23: // global.get
-        case 0x24: // global.set
-        case 0x0C: // br
-        case 0x0D: // br_if
-            break;
-        default:
-            {
-                if ((codeParamStr == "i32") || (codeParamStr == "i64") || (codeParamStr == "f32") || (codeParamStr == "f64"))
-                {
-                    Instr.get()->paramAdd(par0);
-                }
-                if ((codeParamStr == "u") || (codeParamStr == "b") || (codeParamStr == "16b") || (codeParamStr == "uxu"))
-                {
-                    Instr.get()->paramAdd(par0);
-                }
-                if (codeParamStr == "uu")
-                {
-                    Instr.get()->paramAdd(par0);
-                    Instr.get()->paramAdd(par1);
-                }
-                if (codeParamStr == "uub")
-                {
-                    Instr.get()->paramAdd(par0);
-                    Instr.get()->paramAdd(par1);
-                    Instr.get()->paramAdd(par2);
-                }
-            }
-            break;
-    }
-
-
-    if (stackSimplified)
-    {
-        for (int i = 0; i < stackP; i++)
-        {
-            Instr.get()->paramAdd("stack" + std::to_string(stackP - 1 - i));
         }
     }
     else
     {
-        for (int i = 0; i < stackP; i++)
+        for (int i = (dataFieldDictionary.size() - 1); i >= 0; i--)
         {
-            Instr.get()->paramAdd("param" + std::to_string(i));
-        }
-    }
-
-    Instr.get()->blockFold = false;
-    Instr.get()->printComma = true;
-
-    switch (opCode)
-    {
-        case 0x0F: // return
-        case 0x12: // return_call
-        case 0x13: // return_call_indirect
-        case 0x15: // return_call_ref
-            if (Instr.get()->params.size() > dataReturn.size())
+            if ((dataFieldDictionary[i].fieldCategory == category) && (dataFieldDictionary[i].fieldNumber == num))
             {
-                //int n = Instr.get()->params.size() - dataReturn.size();
-                //Instr.get()->params.erase(Instr.get()->params.begin(), Instr.get()->params.begin() + n);
+                return dataFieldDictionary[i].fieldType;
             }
-            break;
-        case 0x02: // block
-        case 0x03: // loop
-            Instr.get()->paramAdd(par0);
-            Instr.get()->printComma = false;
-            Instr.get()->blockFold = true;
-            break;
-        case 0x04: // if
-        case 0x05: // else
-        case 0x0B: // end
-            Instr.get()->printComma = false;
-            Instr.get()->blockFold = true;
-            break;
-        case 0x0C: // br
-        case 0x0D: // br_if
-            Instr.get()->branchDepth = atoi(par0.c_str()) + 1;
-            Instr.get()->paramAdd(par0);
-            break;
-        case 0x0E: // br_table
-            Instr.get()->branchDepth = branchDepthMagicNum;
-            break;
-        case 0x20: // local.get
-            Instr.get()->paramAdd("local" + par0);
-            break;
-        case 0x21: // local.set
-            Instr.get()->returnName = "local" + par0;
-            break;
-        case 0x22: // local.tee
-            Instr.get()->returnName = "local" + par0;
-            Instr.get()->paramAdd("stack0");
-            break;
-        case 0x23: // global.get
-            Instr.get()->paramAdd("global" + par0);
-            break;
-        case 0x24: // global.set
-            Instr.get()->returnName = "global" + par0;
-            break;
-    }
-
-    Instr.get()->isFoldable = false;
-    if ((stackR == 1) && (Instr.get()->returnName == ""))
-    {
-        Instr.get()->returnName = resultVarPrefix + std::to_string(tempVarCounter);
-    }
-    if (Instr.get()->returnName != "")
-    {
-        if (codeParamStr != "16b")
-        {
-            Instr.get()->isFoldable = true;
         }
     }
+    return 0;
+}
 
-    Instr.get()->returnNameItems.clear();
-    if (stackR > 1)
+int wasmDecompiler::dataFieldDictionaryIdx(std::string id)
+{
+    for (int i = (dataFieldDictionary.size() - 1); i >= 0; i--)
     {
-        Instr.get()->returnName = "";
-        for (int i = 0; i < stackR; i++)
+        if (dataFieldDictionary[i].fieldId == id)
         {
-            if (i > 0) Instr.get()->returnName = Instr.get()->returnName + ", ";
-            Instr.get()->returnName = Instr.get()->returnName + resultVarPrefix + std::to_string(i + tempVarCounter);
-            Instr.get()->returnNameItems.push_back(resultVarPrefix + std::to_string(i + tempVarCounter));
-        }
-        Instr.get()->returnName = "{" + Instr.get()->returnName + "}";
-    }
-    else
-    {
-        if (Instr.get()->returnName != "")
-        {
-            Instr.get()->returnNameItems.push_back(Instr.get()->returnName);
+            return i;
         }
     }
+    return -1;
+}
 
-
-    switch (opCode)
+std::string wasmDecompiler::dataFieldDictionaryDisplay(std::string id)
+{
+    if (debugRawVariableNames)
     {
-        case 0x24: // global.set
-            Instr.get()->isFoldable = false;
-            break;
-        case 0x05: // else
-        case 0x0B: // end
-            currentDepth--;
-            while (stackSizeBlock.size() <= (currentDepth))
+        return "<" + id.substr(3, id.size() - 6) + ">";
+    }
+    for (int i = (dataFieldDictionary.size() - 1); i >= 0; i--)
+    {
+        if (dataFieldDictionary[i].fieldId == id)
+        {
+            if (dataFieldDictionary[i].fieldCategory == "const")
             {
-                stackSizeBlock.push_back(0);
-            }
-            if (currentStack != stackSizeBlock[currentDepth])
-            {
-                WDF.additionalInstr(0, "", "!!! STACK WARNING !!!", 0, "");
-            }
-            //currentStack = stackSizeBlock[currentDepth];
-            break;
-        case 0x0C: // br
-        case 0x0E: // br_table
-        case 0x0F: // return
-        case 0x12: // return_call
-        case 0x13: // return_call_indirect
-        case 0x15: // return_call_ref
-            {
-                if (currentStack > stackSizeBlock[currentDepth - 1])
+                std::string dispVal = dataFieldDictionary[i].fieldName;
+                if (dataFieldDictionary[i].fieldType == fieldType_i64)
                 {
-                    stackP = currentStack - stackSizeBlock[currentDepth - 1];
+                    dispVal = dispVal + "L";
                 }
-                if (stackSizeBlock[currentDepth - 1] > currentStack)
+                if (dataFieldDictionary[i].fieldType == fieldType_f32)
                 {
-                    stackR = stackSizeBlock[currentDepth - 1] - currentStack;
+                    dispVal = dispVal + "f";
+                }
+                return dispVal;
+            }
+            else
+            {
+                std::string typePrefix = "";
+                if (decompOptVariableHungarian)
+                {
+                    typePrefix = valueTypeName(dataFieldDictionary[i].fieldType & 255) + "_";
+                }
+                if (dataFieldDictionary[i].fieldName != "")
+                {
+                    return dataFieldDictionary[i].fieldName;
+                }
+                else
+                {
+                    if (dataFieldDictionary[i].isParam)
+                    {
+                        return typePrefix + "param" + std::to_string(dataFieldDictionary[i].fieldNumber);
+                    }
+                    else
+                    {
+                        bool multiType = false;
+                        if ((!decompOptVariableHungarian) && (dataFieldDictionary[i].fieldCategory == "stack"))
+                        {
+                            for (int ii = 0; ii < dataFieldDictionary.size(); ii++)
+                            {
+                                if (dataFieldDictionary[ii].fieldCategory == "stack")
+                                {
+                                    if (dataFieldDictionary[ii].fieldNumber == dataFieldDictionary[i].fieldNumber)
+                                    {
+                                        if (dataFieldDictionary[ii].fieldType != dataFieldDictionary[i].fieldType)
+                                        {
+                                            multiType = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (multiType)
+                        {
+                            return typePrefix + dataFieldDictionary[i].fieldCategory + std::to_string(dataFieldDictionary[i].fieldNumber) + "_" + valueTypeName(dataFieldDictionary[i].fieldType & 255);
+                        }
+                        else
+                        {
+                            return typePrefix + dataFieldDictionary[i].fieldCategory + std::to_string(dataFieldDictionary[i].fieldNumber);
+                        }
+                    }
                 }
             }
-            break;
-    }
-    Instr.get()->depth = currentDepth;
-
-    for (int i = 0; i < size; i++)
-    {
-        Instr.get()->originalInstr.push_back(raw[addr + i]);
-    }
-
-    int currentStack1 = currentStack;
-
-    if (!stackSimplified)
-    {
-        // Copy parameters from stack to temporary variables
-        for (int i = 0; i < stackP; i++)
-        {
-            WDF.additionalInstr(currentDepth, "param" + std::to_string(i), "stack" + std::to_string(stackP - 1 - i), instrId, "");
-        }
-
-        // Remove parameters from the stack
-        if (stackP > 0)
-        {
-            currentStack -= stackP;
-            for (int i = 0; i < currentStack; i++)
-            {
-                WDF.additionalInstr(currentDepth, "stack" + std::to_string(i), "stack" + std::to_string(i + stackP), instrId, "");
-            }
         }
     }
-
-    // Execute instruction
-    if (currentDepth > 0)
-    {
-        Instr.get()->stackPrint = true;
-    }
-    WDF.params.push_back(Instr);
-
-    if (stackSimplified)
-    {
-        // More parameters are more than results ==> Remove stack items
-        if (stackP > stackR)
-        {
-            currentStack -= (stackP - stackR);
-            for (int i = stackR; i < currentStack; i++)
-            {
-                WDF.additionalInstr(currentDepth, "stack" + std::to_string(i), "stack" + std::to_string(i + stackP - stackR), instrId, "");
-            }
-        }
-
-        // Less parameters are more than results ==> Add stack items
-        if (stackP < stackR)
-        {
-            for (int i = currentStack - 1; i >= stackP; i--)
-            {
-                WDF.additionalInstr(currentDepth, "stack" + std::to_string(i + stackR - stackP), "stack" + std::to_string(i), instrId, "");
-            }
-            currentStack += (stackR - stackP);
-        }
-    }
-    else
-    {
-
-        // Insert results to the stack
-        if (stackR > 0)
-        {
-            for (int i = currentStack - 1; i >= 0; i--)
-            {
-                WDF.additionalInstr(currentDepth, "stack" + std::to_string(i + stackR), "stack" + std::to_string(i), instrId, "");
-            }
-            currentStack += stackR;
-        }
-    }
-
-    // Copy result from temporary variables to stack
-    for (int i = 0; i < stackR; i++)
-    {
-        WDF.additionalInstr(currentDepth, "stack" + std::to_string(stackR - 1 - i), resultVarPrefix + std::to_string(i + tempVarCounter), instrId, "");
-    }
-
-    int currentStack2 = currentStack;
-    Instr.get()->stackP = stackP;
-    Instr.get()->stackR = stackR;
-    Instr.get()->stackI = currentStack1;
-    Instr.get()->stackO = currentStack2;
-
-    switch (opCode)
-    {
-        case 0x02: // block
-        case 0x03: // loop
-        case 0x04: // if
-        case 0x05: // else
-            while (stackSizeBlock.size() <= (currentDepth))
-            {
-                stackSizeBlock.push_back(0);
-            }
-            stackSizeBlock[currentDepth] = currentStack;
-            currentDepth++;
-            break;
-    }
-
-    tempVarCounter = tempVarCounter + stackR;
+    return "ERROR[" + id + "]";
 }
 
-void wasmDecompiler::addGlobal(int idx, int dataType)
+void wasmDecompiler::dataFieldDictionarySetType(std::string dataIdX, int dataTypeX)
 {
-    dataField dataField_;
-    dataField_.name = "global" + std::to_string(idx);
-    dataField_.type = dataType;
-    dataGlobal.push_back(dataField_);
+    for (int i = 0; i < dataFieldDictionary.size(); i++)
+    {
+        if (dataFieldDictionary[i].fieldId == dataIdX)
+        {
+            if (dataTypeX > 0)
+            {
+                dataFieldDictionary[i].fieldType = dataTypeX;
+            }
+            return;
+        }
+    }
 }
 
-void wasmDecompiler::addParam(int idx, int dataType)
+std::string wasmDecompiler::dataFieldDictionarySet(std::string dataNameX, int dataTypeX, std::string category, int num)
 {
-    dataField dataField_;
-    dataField_.name = "local" + std::to_string(idx);
-    dataField_.type = dataType;
-    dataParam.push_back(dataField_);
-}
+    dataField2 _;
+    _.fieldName = dataNameX;
+    _.fieldType = dataTypeX;
+    _.fieldCategory = category;
+    _.fieldNumber = num;
+    _.isParam = false;
+    if (category == "param")
+    {
+        _.isParam = true;
+        _.fieldCategory = "local";
+        category = "local";
+    }
 
-void wasmDecompiler::addLocal(int idx, int dataType)
-{
-    dataField dataField_;
-    dataField_.name = "local" + std::to_string(idx);
-    dataField_.type = dataType;
-    dataLocal.push_back(dataField_);
-}
+    if (category == "const")
+    {
+        _.fieldId = "fld_" + valueTypeName(dataTypeX & 255) + "_" + dataNameX + "_fld";
+    }
+    if (category == "stack")
+    {
+        //_.fieldId = "fld_" + std::to_string(dataFieldDictionary.size()) + "_fld";
+        _.fieldId = "fld_" + category + "_" + std::to_string(num) + "_" + std::to_string(dataFieldDictionary.size()) + "_fld";
+    }
+    if ((category != "const") && (category != "stack"))
+    {
+        //_.fieldId = "fld_" + std::to_string(dataFieldDictionary.size()) + "_fld";
+        _.fieldId = "fld_" + category + "_" + std::to_string(num) + "_fld";
+    }
 
-void wasmDecompiler::addReturn(int idx, int dataType)
-{
-    dataField dataField_;
-    dataField_.name = "return" + std::to_string(idx);
-    dataField_.type = dataType;
-    dataReturn.push_back(dataField_);
+    for (int i = 0; i < dataFieldDictionary.size(); i++)
+    {
+        if (dataFieldDictionary[i].fieldId == _.fieldId)
+        {
+            if ((_.fieldName != "") && (!dataFieldDictionary[i].isParam))
+            {
+                dataFieldDictionary[i].fieldName = _.fieldName;
+            }
+            if (_.fieldType > 0)
+            {
+                dataFieldDictionary[i].fieldType = _.fieldType;
+            }
+            return _.fieldId;
+        }
+    }
+
+    dataFieldDictionary.push_back(_);
+    return _.fieldId;
 }
 
 void wasmDecompiler::convertBlockToLabels()
@@ -602,7 +359,7 @@ void wasmDecompiler::convertBlockToLabels()
 
                     // Insert label instruction
                     branchLabel.push_back(labelName);
-                    WDF.additionalInstr(0, "", labelName + ":", 0, "");
+                    WDF.additionalInstr(0, "", labelName + ":", 0);
                     std::shared_ptr<wasmDecompilerFunction> Instr = WDF.params[WDF.params.size() - 1];
                     WDF.params.pop_back();
                     Instr.get()->id = WDF.params.size() + 1;
@@ -679,7 +436,7 @@ void wasmDecompiler::convertBlockToLabels()
     if (labelEndUsed)
     {
         std::string labelName = "__label_end__";
-        WDF.additionalInstr(0, "", labelName + ":", 0, "");
+        WDF.additionalInstr(0, "", labelName + ":", 0);
         std::shared_ptr<wasmDecompilerFunction> Instr = WDF.params[WDF.params.size() - 1];
         WDF.params.pop_back();
         Instr.get()->id = WDF.params.size() + 1;
@@ -808,7 +565,40 @@ void wasmDecompiler::convertBlockToLabels()
 
 void wasmDecompiler::codeOptimize()
 {
-    int work = debugNoFold ? 0 : 1000000000;
+    // Prepare the result type from function type or first parameter type
+    for (int i = 0; i < WDF.params.size(); i++)
+    {
+        if (WDF.params[i].get()->returnName != "")
+        {
+            if (dataFieldDictionaryGetType(WDF.params[i].get()->returnName, -1) == 0)
+            {
+                switch (WDF.params[i].get()->returnType)
+                {
+                    case 0:
+                        break;
+                    case fieldTypeCallFunc:
+                        for (int ii = 0; ii < WDF.params[i].get()->returnTypeList.size(); ii++)
+                        {
+                            std::string returnVarName = hex::StringGetParam(WDF.params[i].get()->returnName.substr(0, WDF.params[i].get()->returnName.size() - 1) + ",", ii, ',').substr(1);
+                            dataFieldDictionarySetType(returnVarName, WDF.params[i].get()->returnTypeList[ii]);
+                        }
+                        break;
+                    case fieldTypeVariable:
+                        if (WDF.params[i].get()->params.size() > 0)
+                        {
+                            dataFieldDictionarySetType(WDF.params[i].get()->returnName, dataFieldDictionaryGetType(WDF.params[i].get()->params[0].get()->name, -1) & 255);
+                        }
+                        break;
+                    default:
+                        dataFieldDictionarySetType(WDF.params[i].get()->returnName, WDF.params[i].get()->returnType);
+                        break;
+                }
+            }
+        }
+    }
+
+
+    int work = decompOptFold ? 1000000000 : 0;
     while (work > 0)
     {
         work--;
@@ -891,26 +681,17 @@ void wasmDecompiler::codeOptimize()
     }
 
 
-    // Write the local variable types
-    for (int i = 0; i < WDF.params.size(); i++)
+    // Prepare variable declaration
+    localVarNamesD.clear();
+    localVarNamesT.clear();
+    for (int ii = 0; ii < dataFieldDictionary.size(); ii++)
     {
-        if (WDF.params[i].get()->returnName.size() > 5)
+        if ((!dataFieldDictionary[ii].isParam) && (dataFieldDictionary[ii].fieldCategory == "global") || (dataFieldDictionary[ii].fieldCategory == "param"))
         {
-            if (WDF.params[i].get()->returnName.substr(0, 5) == "local")
-            {
-                for (int ii = 0; ii < dataLocal.size(); ii++)
-                {
-                    if ((WDF.params[i].get()->returnName == dataLocal[ii].name) && (dataLocal[ii].type >= 0))
-                    {
-                        WDF.params[i].get()->returnName = valueTypeName(dataLocal[ii].type) + " " + WDF.params[i].get()->returnName;
-                        dataLocal[ii].type = 0;
-                    }
-                }
-            }
-            break;
+            localVarNamesD.push_back(-1);
+            localVarNamesT.push_back(dataFieldDictionaryDisplay(dataFieldDictionary[ii].fieldId));
         }
     }
-
 }
 
 bool wasmDecompiler::debugIsFunc(std::string funcName)
@@ -919,51 +700,23 @@ bool wasmDecompiler::debugIsFunc(std::string funcName)
     return t > 0;
 }
 
-std::string wasmDecompiler::debugValues(int idx)
+std::string wasmDecompiler::debugValues()
 {
-    return "";
-
     std::string s;
 
-    if (idx == (WDF.params.size() + 0))
+    for (int I = 0; I < dataFieldDictionary.size(); I++)
     {
-        s = "global: ";
-        for (int i = 0; i < dataGlobal.size(); i++)
+        if (dataFieldDictionary[I].fieldType >= 256)
         {
-            s = s + valueTypeName(dataGlobal[i].type) + " " + dataGlobal[i].name + "; ";
+            s = s + dataFieldDictionary[I].fieldId + "=c" + valueTypeName(dataFieldDictionary[I].fieldType - 256) + "_" + dataFieldDictionary[I].fieldName + ", ";
         }
-        return s;
+        else
+        {
+            s = s + dataFieldDictionary[I].fieldId + "=" + valueTypeName(dataFieldDictionary[I].fieldType) + "_" + dataFieldDictionary[I].fieldName + ", ";
+        }
     }
 
-    if (idx == (WDF.params.size() + 1))
-    {
-        s = "param: ";
-        for (int i = 0; i < dataParam.size(); i++)
-        {
-            s = s + valueTypeName(dataParam[i].type) + " " + dataParam[i].name + "; ";
-        }
-        return s;
-    }
-
-    if (idx == (WDF.params.size() + 2))
-    {
-        s = "local: ";
-        for (int i = 0; i < dataLocal.size(); i++)
-        {
-            s = s + valueTypeName(dataLocal[i].type) + " " + dataLocal[i].name + "; ";
-        }
-        return s;
-    }
-
-    if (idx == (WDF.params.size() + 3))
-    {
-        s = "return: ";
-        for (int i = 0; i < dataReturn.size(); i++)
-        {
-            s = s + valueTypeName(dataReturn[i].type) + " " + dataReturn[i].name + "; ";
-        }
-        return s;
-    }
+    return s;
 }
 
 std::string wasmDecompiler::printCommand(int idx)
@@ -974,23 +727,124 @@ std::string wasmDecompiler::printCommand(int idx)
         codeOptimize();
     }
 
-    std::string s = debugValues(idx);
-    if (s != "") return s;
+    std::string s = "";
+    std::string ss = "";
 
     if (idx < WDF.params.size())
     {
+        for (int ii = 0; ii < localVarNamesT.size(); ii++)
+        {
+            if (localVarNamesD[ii] > WDF.params[idx].get()->depth)
+            {
+                localVarNamesT[ii] = "";
+            }
+        }
+
+
         s = hex::indent(WDF.params[idx].get()->depth);
         if (WDF.params[idx].get()->returnName != "")
         {
-            s = s + WDF.params[idx].get()->returnName + " = ";
+            if (WDF.params[idx].get()->returnNameItems.size() > 1)
+            {
+                s = s + "{";
+                for (int i = 0; i < WDF.params[idx].get()->returnNameItems.size(); i++)
+                {
+                    if (i > 0)
+                    {
+                        s = s + ", ";
+                    }
+                    std::string localVarNameItem = dataFieldDictionaryDisplay(WDF.params[idx].get()->returnNameItems[i]);
+                    if (decompOptVariableDeclare)
+                    {
+                        bool varNotDeclared = true;
+                        for (int ii = 0; ii < localVarNamesT.size(); ii++)
+                        {
+                            if (localVarNameItem == localVarNamesT[ii])
+                            {
+                                varNotDeclared = false;
+                            }
+                        }
+                        if (varNotDeclared)
+                        {
+                            localVarNamesD.push_back(WDF.params[idx].get()->depth);
+                            localVarNamesT.push_back(localVarNameItem);
+                            s = s + valueTypeName(dataFieldDictionary[dataFieldDictionaryIdx(WDF.params[idx].get()->returnNameItems[i])].fieldType) + " ";
+                        }
+                    }
+                    s = s + localVarNameItem;
+                }
+                s = s + "} = ";
+            }
+            else
+            {
+                std::string localVarNameItem = dataFieldDictionaryDisplay(WDF.params[idx].get()->returnName);
+                if (decompOptVariableDeclare)
+                {
+                    bool varNotDeclared = true;
+                    for (int ii = 0; ii < localVarNamesT.size(); ii++)
+                    {
+                        if (localVarNameItem == localVarNamesT[ii])
+                        {
+                            varNotDeclared = false;
+                        }
+                    }
+                    if (varNotDeclared)
+                    {
+                        localVarNamesD.push_back(WDF.params[idx].get()->depth);
+                        localVarNamesT.push_back(localVarNameItem);
+                        s = s + valueTypeName(dataFieldDictionary[dataFieldDictionaryIdx(WDF.params[idx].get()->returnName)].fieldType) + " ";
+                    }
+                }
+                s = s + localVarNameItem + " = ";
+            }
         }
-        s = s + WDF.params[idx].get()->instrText();
+
+        // Get instruction text
+        ss = WDF.params[idx].get()->instrText();
+
+        // Substitute constants and variables
+        int fieldI1 = ss.find("fld_");
+        int fieldI2 = ss.find("_fld");
+        while ((fieldI1 >= 0) && (fieldI2 > fieldI1))
+        {
+            std::string s_pre = ss.substr(0, fieldI1);
+            std::string s_value = dataFieldDictionaryDisplay(ss.substr(fieldI1, fieldI2 - fieldI1 + 4));
+            std::string s_suf = ss.substr(fieldI2 + 4);
+            if ((s_value.size() > 0) && ((s_value[0] == '-') || (s_value[0] == '+')))
+            {
+                bool negBracket = true;
+                if ((s_pre.size() >= 1) && (s_pre[s_pre.size() - 1] == '('))
+                {
+                    negBracket = false;
+                }
+                if ((s_pre.size() >= 1) && (s_pre[s_pre.size() - 1] == ','))
+                {
+                    negBracket = false;
+                }
+                if ((s_pre.size() >= 2) && (s_pre[s_pre.size() - 1] == ' ') && (s_pre[s_pre.size() - 2] == ','))
+                {
+                    negBracket = false;
+                }
+                if (negBracket)
+                {
+                    s_value = "(" + s_value + ")";
+                }
+            }
+            ss = s_pre + s_value + s_suf;
+            fieldI1 = ss.find("fld_");
+            fieldI2 = ss.find("_fld");
+        }
+
+        // Append instruction text
+        s = s + ss;
+
+
         s = hex::StringFindReplace(s, "[\\n]", "[\\*]" + hex::indent(WDF.params[idx].get()->depth));
         s = hex::StringFindReplace(s, "[\\*]", "[\\n]");
         if (debugInfo)
         {
             std::string debugPrefix = std::to_string(idx) + ". " + std::to_string(WDF.params[idx].get()->id) + (WDF.params[idx].get()->isFoldable ? " " : "*") + (WDF.params[idx].get()->blockFold ? "#" : " ") + "   ";
-            if (debugNoFold)
+            if (!decompOptFold)
             {
                 if (WDF.params[idx].get()->stackPrint)
                 {
@@ -1014,13 +868,18 @@ std::string wasmDecompiler::printCommand(int idx)
         }
         if (WDF.params[idx].get()->printComma)
         {
+            if (s[s.size() - 1] == ' ')
+            {
+                s = s.substr(0, s.size() - 1);
+            }
             s = s + ";";
         }
-        if (WDF.params[idx].get()->comment != "")
-        {
-            s = s + "  // " + WDF.params[idx].get()->comment;
-        }
         return s;
+    }
+
+    if (debugPrintVariableList && (idx == WDF.params.size()))
+    {
+        return debugValues();
     }
 
     return "`";

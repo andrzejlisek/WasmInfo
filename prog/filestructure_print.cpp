@@ -33,9 +33,9 @@ void fileStructure::printCodeInstr(std::stringstream &ss, std::vector<codeInstr>
 {
     for (int iii = 0; iii < codeInstr_.size(); iii++)
     {
-        // The call functions requires additional type information
         switch (raw[codeInstr_[iii].Addr])
         {
+            // The call functions requires additional type information
             case 0x10: // call
             case 0x11: // call_indirect
             case 0x12: // return_call
@@ -58,12 +58,74 @@ void fileStructure::printCodeInstr(std::stringstream &ss, std::vector<codeInstr>
 
                     int stackP = sectionSubInfo_[typeIdx]._TypeParams.size();
                     int stackR = sectionSubInfo_[typeIdx]._TypeReturn.size();
-                    std::string stackInfo = std::to_string(stackP) + "`" + std::to_string(stackR) + "`" + getFunctionNameById(-1, atoi(codeInstr_[iii].Param0.c_str()), -1);
+                    std::string stackInfo = std::to_string(stackP) + "`" + std::to_string(stackR) + "`" + getFunctionNameById(-1, atoi(codeInstr_[iii].Param0.c_str()), -1) + "`";
+                    for (int iiii = 0; iiii < sectionSubInfo_[typeIdx]._TypeReturn.size(); iiii++)
+                    {
+                        stackInfo = stackInfo + std::to_string(sectionSubInfo_[typeIdx]._TypeReturn[iiii]) + "`";
+                    }
                     wasmDecompiler_.addCommand(raw, codeInstr_[iii].Addr, codeInstr_[iii].Size, codeInstr_[iii].Param0, codeInstr_[iii].Param1, stackInfo);
                 }
                 break;
+            // the functions requires artificial instructions to simulate propertly stack size within the block
+            case 0x07: // catch
+            case 0x08: // throw
+                {
+                    int catchTag = atoi(codeInstr_[iii].Param0.c_str());
+                    int catchTypeIdx = getTypeListItemByTag(catchTag);
+                    wasmDecompiler_.addCommand(raw, codeInstr_[iii].Addr, codeInstr_[iii].Size, codeInstr_[iii].Param0, codeInstr_[iii].Param1, codeInstr_[iii].Param2);
+
+                    if (catchTypeIdx >= 0)
+                    {
+                        uchar * raw0 = new uchar[8];
+                        if (sectionSubInfo_[catchTypeIdx]._TypeParams.size() > 0)
+                        {
+                            for (int iiii = 0; iiii < sectionSubInfo_[catchTypeIdx]._TypeParams.size(); iiii++)
+                            {
+                                switch (raw[codeInstr_[iii].Addr])
+                                {
+                                    case 0x07: // catch
+                                        {
+                                            switch (sectionSubInfo_[catchTypeIdx]._TypeParams[iiii])
+                                            {
+                                                default:   // wasmDecompiler_.fieldType_i32
+                                                    raw0[0] = 0x41;
+                                                    break;
+                                                case 0x7E: // wasmDecompiler_.fieldType_i64
+                                                    raw0[0] = 0x42;
+                                                    break;
+                                                case 0x7D: // wasmDecompiler_.fieldType_f32
+                                                    raw0[0] = 0x43;
+                                                    break;
+                                                case 0x7C: // wasmDecompiler_.fieldType_f64
+                                                    raw0[0] = 0x44;
+                                                    break;
+                                            }
+                                            raw0[1] = 0;
+                                            wasmDecompiler_.addCommand(raw0, 0, 2, "0", "", "");
+                                        }
+                                        break;
+                                    case 0x08: // throw
+                                        {
+                                            raw0[0] = 0x1A;
+                                            wasmDecompiler_.addCommand(raw0, 0, 1, "", "", "");
+                                        }
+                                        break;
+                                }
+                            }
+                        }
+                        delete[] raw0;
+                    }
+
+                }
+                break;
+            //case 0x02: // block
+            //case 0x02: // loop
+            //case 0x02: // if
+            //    break;
             default:
-                wasmDecompiler_.addCommand(raw, codeInstr_[iii].Addr, codeInstr_[iii].Size, codeInstr_[iii].Param0, codeInstr_[iii].Param1, codeInstr_[iii].Param2);
+                {
+                    wasmDecompiler_.addCommand(raw, codeInstr_[iii].Addr, codeInstr_[iii].Size, codeInstr_[iii].Param0, codeInstr_[iii].Param1, codeInstr_[iii].Param2);
+                }
                 break;
         }
 
@@ -76,18 +138,13 @@ void fileStructure::printCodeInstr(std::stringstream &ss, std::vector<codeInstr>
             {
                 while (instrTextLine > 0)
                 {
-                    if (decompType & 1)
-                    {
-                        ss << hex::indent(codeInstr_[iii].Depth) << instrText.substr(0, instrTextLine);
-                        ss << std::endl;
-                        printCodeText(ss, -1, 0);
-                    }
+                    ss << hex::indent(codeInstr_[iii].Depth) << instrText.substr(0, instrTextLine) << std::endl;
+                    printCodeText(ss, -1, 0);
                     instrText = instrText.substr(instrTextLine + 1);
                     instrTextLine = instrText.find("\n");
                 }
             }
-            ss << hex::indent(codeInstr_[iii].Depth) << instrText;
-            ss << std::endl;
+            ss << hex::indent(codeInstr_[iii].Depth) << instrText << std::endl;
         }
     }
     if (decompType & 2)
@@ -250,6 +307,81 @@ int fileStructure::getVarTypeL(int idx, int fidx_)
     return 0;
 }
 
+std::string fileStructure::getGlobalVarName(int num, bool def, int valType)
+{
+    for (int iii = 0; iii < sectionInfo_.size(); iii++)
+    {
+        // Name in import / Name in export
+        if ((sectionInfo_[iii].Id == 2) || (sectionInfo_[iii].Id == 7))
+        {
+            for (int iiii = sectionInfo_[iii].SubIdx1; iiii < sectionInfo_[iii].SubIdx2; iiii++)
+            {
+                if (sectionSubInfo_[iiii]._FunctionTag == 3)
+                {
+                    if (sectionSubInfo_[iiii]._FunctionIdx == num)
+                    {
+                        return correctFunctionName(sectionSubInfo_[iiii]._FunctionName);
+                    }
+                }
+            }
+        }
+    }
+
+    if (def)
+    {
+        if (wasmDecompiler_.decompOptVariableHungarian)
+        {
+            return wasmDecompiler_.valueTypeName(valType) + "_global" + std::to_string(num);
+        }
+        else
+        {
+            return "global" + std::to_string(num);
+        }
+    }
+    else
+    {
+        return "";
+    }
+}
+
+int fileStructure::getTypeListItemByTag(int num)
+{
+    int tagNum = -1;
+    for (int iii = 0; iii < sectionInfo_.size(); iii++)
+    {
+        if (sectionInfo_[iii].Id == 13)
+        {
+            for (int iiii = sectionInfo_[iii].SubIdx1; iiii < sectionInfo_[iii].SubIdx2; iiii++)
+            {
+                if (sectionSubInfo_[iiii].Index == num)
+                {
+                    tagNum = sectionSubInfo_[iiii]._TypeReturn[1];
+                }
+            }
+        }
+    }
+    if (tagNum < 0)
+    {
+        return -1;
+    }
+
+    for (int iii = 0; iii < sectionInfo_.size(); iii++)
+    {
+        if (sectionInfo_[iii].Id == 1)
+        {
+            for (int iiii = sectionInfo_[iii].SubIdx1; iiii < sectionInfo_[iii].SubIdx2; iiii++)
+            {
+                if (sectionSubInfo_[iiii].Index == tagNum)
+                {
+                    return iiii;
+                }
+            }
+        }
+    }
+
+    return -1;
+}
+
 std::string fileStructure::getFunctionType(int funcType, std::string funcName, int &localNum)
 {
     switch (localNum)
@@ -297,15 +429,20 @@ std::string fileStructure::getFunctionType(int funcType, std::string funcName, i
                             {
                                 funcParam = funcParam + ", ";
                             }
-                            funcParam = funcParam + wasmDecompiler_.valueTypeName(sectionSubInfo_[iiii]._TypeParams[iiiii]);
-                            if (funcName == "{~}")
+                            funcParam = funcParam + wasmDecompiler_.valueTypeName(sectionSubInfo_[iiii]._TypeParams[iiiii]) + " ";
+                            if (wasmDecompiler_.decompOptVariableHungarian)
+                            {
+                                funcParam = funcParam + wasmDecompiler_.valueTypeName(sectionSubInfo_[iiii]._TypeParams[iiiii]) + "_";
+                            }
+                            funcParam = funcParam + "param" + std::to_string(localNum);
+                            /*if (funcName == "{~}")
                             {
                                 funcParam = funcParam + " param" + std::to_string(localNum);
                             }
                             else
                             {
                                 funcParam = funcParam + " local" + std::to_string(localNum);
-                            }
+                            }*/
                             localNum++;
                         }
                     }
@@ -466,7 +603,12 @@ void fileStructure::printType(std::stringstream &ss, sectionInfo &sectionInfo__,
                         ss << ", ";
                     }
                     ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeParams[iii]);
-                    ss << " param" << iii;
+                    ss << " ";
+                    if (wasmDecompiler_.decompOptVariableHungarian)
+                    {
+                        ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeParams[iii]) << "_";
+                    }
+                    ss << "param" << iii;
                 }
             }
             else
@@ -525,7 +667,7 @@ void fileStructure::printImport(std::stringstream &ss, sectionInfo &sectionInfo_
                 {
                     ss << "const ";
                 }
-                ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0]) << " global" << sectionSubInfo_[ii]._FunctionIdx << ";";
+                ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0]) << " " << getGlobalVarName(sectionSubInfo_[ii]._FunctionIdx, true, sectionSubInfo_[ii]._TypeReturn[0]) << ";";
                 ss << std::endl;
             }
         }
@@ -616,7 +758,7 @@ void fileStructure::printGlobal(std::stringstream &ss, sectionInfo &sectionInfo_
             {
                 ss << "const ";
             }
-            ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0]) << " global" << sectionSubInfo_[ii]._FunctionIdx << ";";
+            ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0]) << " " << getGlobalVarName(sectionSubInfo_[ii]._FunctionIdx, true, sectionSubInfo_[ii]._TypeReturn[0]) << ";";
             ss << std::endl;
 
             if (decompType & 1)
@@ -626,8 +768,8 @@ void fileStructure::printGlobal(std::stringstream &ss, sectionInfo &sectionInfo_
                 ss << std::endl;
             }
 
-            wasmDecompiler_.reset("", decompBranch);
-            wasmDecompiler_.addReturn(0, sectionSubInfo_[ii]._TypeReturn[0]);
+            wasmDecompiler_.reset("", decompBranch, sectionSubInfo_[ii]._CodeDataFieldDictionary);
+            wasmDecompiler_.dataFieldDictionarySet("", sectionSubInfo_[ii]._TypeReturn[0], "return", 0);
             printCodeInstr(ss, sectionSubInfo_[ii]._CodeInstr, ii, decompType);
         }
     }
@@ -662,6 +804,12 @@ void fileStructure::printExport(std::stringstream &ss, sectionInfo &sectionInfo_
             {
                 printCodeText(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
                 ss << getFunctionNameById(-1, sectionSubInfo_[ii]._FunctionIdx, 0) << ";";
+                ss << std::endl;
+            }
+            if (sectionSubInfo_[ii]._FunctionTag == 3)
+            {
+                printCodeText(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+                ss << wasmDecompiler_.valueTypeName(getVarTypeG(sectionSubInfo_[ii]._FunctionIdx)) << " " << getGlobalVarName(sectionSubInfo_[ii]._FunctionIdx, true, getVarTypeG(sectionSubInfo_[ii]._FunctionIdx)) << ";";
                 ss << std::endl;
             }
         }
@@ -702,7 +850,7 @@ void fileStructure::printCode(std::stringstream &ss, sectionInfo &sectionInfo__,
         if (infoCode)
         {
             int localNum = -1;
-            wasmDecompiler_.reset(getFunctionName(sectionSubInfo_[ii].Index, sectionSubInfo_[ii]._FunctionIdx, localNum), decompBranch);
+            wasmDecompiler_.reset(getFunctionName(sectionSubInfo_[ii].Index, sectionSubInfo_[ii]._FunctionIdx, localNum), decompBranch, sectionSubInfo_[ii]._CodeDataFieldDictionary);
             if ((decompType & 1) || (decompType == 0))
             {
                 printCodeText(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii]._CodeAddr_ - sectionSubInfo_[ii].ItemAddr);
@@ -712,13 +860,13 @@ void fileStructure::printCode(std::stringstream &ss, sectionInfo &sectionInfo__,
                 int iii = 0;
                 while (getVarTypeG(iii) != 0)
                 {
-                    wasmDecompiler_.addGlobal(iii, getVarTypeG(iii));
+                    wasmDecompiler_.dataFieldDictionarySet(getGlobalVarName(iii, false, 0), getVarTypeG(iii), "global", iii);
                     iii++;
                 }
                 iii = 0;
                 while (getVarTypeL(iii, 0 - ii) != 0)
                 {
-                    wasmDecompiler_.addReturn(iii, getVarTypeL(iii, 0 - ii));
+                    wasmDecompiler_.dataFieldDictionarySet("", getVarTypeL(iii, 0 - ii), "return", iii);
                     iii++;
                 }
             }
@@ -733,10 +881,15 @@ void fileStructure::printCode(std::stringstream &ss, sectionInfo &sectionInfo__,
                 }
                 ss << std::endl;
             }
+            else
+            {
+                // Necessary for get correct localNum value
+                getFunctionName(sectionSubInfo_[ii].Index, sectionSubInfo_[ii]._FunctionIdx, localNum);
+            }
 
             for (int iii = 0; iii < localNum; iii++)
             {
-                wasmDecompiler_.addParam(iii, getVarTypeL(iii, ii));
+                wasmDecompiler_.dataFieldDictionarySet("", getVarTypeL(iii, ii), "param", iii);
             }
 
             if (decompType & 1)
@@ -756,14 +909,14 @@ void fileStructure::printCode(std::stringstream &ss, sectionInfo &sectionInfo__,
                 }
                 for (int iiii = 0; iiii < sectionSubInfo_[ii]._CodeLocalN[iii]; iiii++)
                 {
-                    wasmDecompiler_.addLocal(localNum, getVarTypeL(localNum, ii));
+                    std::string localVarId = wasmDecompiler_.dataFieldDictionarySet("", getVarTypeL(localNum, ii), "local", localNum);
                     if (decompType & 1)
                     {
                         if (iiii > 0)
                         {
                             ss << ",";
                         }
-                        ss << " local" << std::to_string(localNum);
+                        ss << " " << wasmDecompiler_.dataFieldDictionaryDisplay(localVarId);
                     }
                     localNum++;
                 }
@@ -807,8 +960,8 @@ void fileStructure::printData(std::stringstream &ss, sectionInfo &sectionInfo__,
                 ss << std::endl;
             }
 
-            wasmDecompiler_.reset("", decompBranch);
-            wasmDecompiler_.addReturn(0, 0);
+            wasmDecompiler_.reset("", decompBranch, sectionSubInfo_[ii]._CodeDataFieldDictionary);
+            wasmDecompiler_.dataFieldDictionarySet("", 0, "return", 0);
             printCodeInstr(ss, sectionSubInfo_[ii]._CodeInstr, ii, decompType);
             printRaw(ss, sectionSubInfo_[ii]._CodeAddr, sectionSubInfo_[ii]._CodeSize);
         }
@@ -818,6 +971,101 @@ void fileStructure::printData(std::stringstream &ss, sectionInfo &sectionInfo__,
 void fileStructure::printDataCount(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
 {
     ss << "Data count: " << sectionInfo__.StartIdx << std::endl;
+}
+
+void fileStructure::printTag(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
+{
+    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
+    {
+        if (infoItem)
+        {
+            ss << itemInfoText(sectionSubInfo_[ii]);
+            ss << "tag[" << sectionSubInfo_[ii].Index << "]  ";
+            ss << sectionSubInfo_[ii]._TypeReturn[0] << "  " << sectionSubInfo_[ii]._TypeReturn[1];
+            for (int i_ = 0; i_ < sectionInfo_.size(); i_++)
+            {
+                if (sectionInfo_[i_].Id == 1)
+                {
+                    for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
+                    {
+                        if (sectionSubInfo_[ii0].Index == sectionSubInfo_[ii]._TypeReturn[1])
+                        {
+                            ss << "  return = {";
+                            for (int iii = 0; iii < sectionSubInfo_[ii0]._TypeReturn.size(); iii++)
+                            {
+                                if (iii > 0) ss << ", ";
+                                ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeReturn[iii]);
+                            }
+                            ss << "}  param = {";
+                            for (int iii = 0; iii < sectionSubInfo_[ii0]._TypeParams.size(); iii++)
+                            {
+                                if (iii > 0) ss << ", ";
+                                ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeParams[iii]);
+                            }
+                            ss << "};";
+
+                        }
+                    }
+                }
+            }
+            ss << std::endl;
+        }
+        if (infoItemRaw)
+        {
+            printRaw(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+        }
+        if (infoCode)
+        {
+            printCodeText(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+
+
+            for (int i_ = 0; i_ < sectionInfo_.size(); i_++)
+            {
+                if (sectionInfo_[i_].Id == 1)
+                {
+                    for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
+                    {
+                        if (sectionSubInfo_[ii0].Index == sectionSubInfo_[ii]._TypeReturn[1])
+                        {
+                            for (int iii = 0; iii < sectionSubInfo_[ii0]._TypeReturn.size(); iii++)
+                            {
+                                if (iii > 0)
+                                {
+                                    ss << "_";
+                                }
+                                ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeReturn[iii]);
+                            }
+                            if (sectionSubInfo_[ii0]._TypeReturn.size() == 0) ss << "void";
+                            ss << " template(";
+                            if (sectionSubInfo_[ii0]._TypeParams.size() > 0)
+                            {
+                                for (int iii = 0; iii < sectionSubInfo_[ii0]._TypeParams.size(); iii++)
+                                {
+                                    if (iii > 0)
+                                    {
+                                        ss << ", ";
+                                    }
+                                    ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeParams[iii]);
+                                    ss << " ";
+                                    if (wasmDecompiler_.decompOptVariableHungarian)
+                                    {
+                                        ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeParams[iii]) << "_";
+                                    }
+                                    ss << "param" << iii;
+                                }
+                            }
+                            else
+                            {
+                                ss << "void";
+                            }
+                            ss << ");";
+                        }
+                    }
+                }
+            }
+            ss << std::endl;
+        }
+    }
 }
 
 void fileStructure::printRaw(std::stringstream &ss, int rawAddr, int rawSize)
@@ -884,8 +1132,13 @@ void fileStructure::printRaw(std::stringstream &ss, int rawAddr, int rawSize)
     ss << Str1 << Str2 << std::endl;
 }
 
-std::string fileStructure::print(int codeBinSize_, int sectionId, bool infoRaw, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch)
+std::string fileStructure::print(int codeBinSize_, int sectionId, bool infoRaw, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch, int decompOpts)
 {
+    wasmDecompiler_.decompOptFold = decompOpts & 1;
+    wasmDecompiler_.decompOptStackSimplify = decompOpts & 2;
+    wasmDecompiler_.decompOptVariableDeclare = decompOpts & 4;
+    wasmDecompiler_.decompOptVariableHungarian = decompOpts & 8;
+
     codeBinSize = codeBinSize_;
 
     std::stringstream ss;
@@ -908,6 +1161,7 @@ std::string fileStructure::print(int codeBinSize_, int sectionId, bool infoRaw, 
             case 10:
             case 11:
             case 12:
+            case 13:
                 if (sectionInfo_[i].Id == sectionId)
                 {
                     toPrint = true;
@@ -937,6 +1191,7 @@ std::string fileStructure::print(int codeBinSize_, int sectionId, bool infoRaw, 
                     case 10: ss << "Code (10)"; break;
                     case 11: ss << "Data (11)"; break;
                     case 12: ss << "DataCount (12)"; break;
+                    case 13: ss << "Tag (13)"; break;
                     default: ss << "Unknown (" << sectionInfo_[i].Id << ")"; break;
                     case 255:ss << "Header"; break;
                 }
@@ -993,6 +1248,7 @@ std::string fileStructure::print(int codeBinSize_, int sectionId, bool infoRaw, 
                     case 10: printCode(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode, decompType, decompBranch); break;
                     case 11: printData(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode, decompType, decompBranch); break;
                     case 12: printDataCount(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
+                    case 13: printTag(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
                 }
             }
         }

@@ -19,6 +19,8 @@ public:
     wasmDecompilerFunction();
     std::string name = "";
     std::string returnName = "";
+    int returnType = -1;
+    std::vector<int> returnTypeList;
     std::vector<std::string> returnNameItems;
     std::vector<std::shared_ptr<wasmDecompilerFunction>> params;
     int depth = 0;
@@ -28,8 +30,7 @@ public:
     std::string instrText();
     int instrTextParamList = 0;
     void paramAdd(std::string text);
-    void additionalInstr(int currentDepth, std::string instrResult, std::string instrParam, int instrId, std::string comment);
-    std::string comment = "";
+    void additionalInstr(int currentDepth, std::string instrResult, std::string instrParam, int instrId);
     int id = 0;
     bool printComma = false;
     int branchDepth = 0;

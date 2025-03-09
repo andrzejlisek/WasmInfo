@@ -13,7 +13,7 @@ void wasmDecompilerFunction::paramAdd(std::string text)
     params.push_back(instr);
 }
 
-void wasmDecompilerFunction::additionalInstr(int currentDepth, std::string instrResult, std::string instrParam, int instrId, std::string comment)
+void wasmDecompilerFunction::additionalInstr(int currentDepth, std::string instrResult, std::string instrParam, int instrId)
 {
     std::shared_ptr<wasmDecompilerFunction> instr = std::make_shared<wasmDecompilerFunction>();
     instr.get()->blockFold = false;
@@ -21,9 +21,16 @@ void wasmDecompilerFunction::additionalInstr(int currentDepth, std::string instr
     instr.get()->depth = currentDepth;
     if (instrResult != "")
     {
+        if (instrResult[0] == '.')
+        {
+            instr.get()->isFoldable = false;
+            instrResult = instrResult.substr(1);
+        }
+
         instr.get()->printComma = true;
         instr.get()->name = "[~0~]";
         instr.get()->returnName = instrResult;
+        instr.get()->returnType = 255;
         instr.get()->returnNameItems.push_back(instrResult);
         instr.get()->paramAdd(instrParam);
     }
@@ -32,7 +39,6 @@ void wasmDecompilerFunction::additionalInstr(int currentDepth, std::string instr
         instr.get()->name = instrParam;
         instr.get()->returnName = "";
     }
-    instr.get()->comment = comment;
     instr.get()->id = instrId;
     params.push_back(instr);
 }
@@ -42,17 +48,15 @@ std::string wasmDecompilerFunction::instrText()
     std::string s = name;
     for (int i = 0; i < params.size(); i++)
     {
-        s = hex::StringFindReplace(s, "[~" + std::to_string(i) + "~]", params[i].get()->instrText());
+        std::string paramsText = params[i].get()->instrText();
+        if ((paramsText.size() > 2) && (paramsText[0] == '(') && (paramsText[paramsText.size() - 1] == ')'))
+        {
+            s = hex::StringFindReplace(s, "([~" + std::to_string(i) + "~])", paramsText);
+        }
+        s = hex::StringFindReplace(s, "[~" + std::to_string(i) + "~]", paramsText);
         if (hex::StringIndexOf(s, "[!" + std::to_string(i) + "!]") >= 0)
         {
             std::string repl = params[i].get()->instrText();
-            if (repl.size() > 0)
-            {
-                if ((repl[0] == '-') || (repl[0] == '+'))
-                {
-                    repl = "(" + repl + ")";
-                }
-            }
             s = hex::StringFindReplace(s, "[!" + std::to_string(i) + "!]", repl);
         }
     }
@@ -66,6 +70,10 @@ std::string wasmDecompilerFunction::instrText()
                 paramList = paramList + ", ";
             }
             paramList = paramList + params[i].get()->instrText();
+        }
+        if ((paramList.size() > 2) && (paramList[0] == '(') && (paramList[paramList.size() - 1] == ')'))
+        {
+            s = hex::StringFindReplace(s, "([#1#])", paramList);
         }
         s = hex::StringFindReplace(s, "[#1#]", paramList);
     }

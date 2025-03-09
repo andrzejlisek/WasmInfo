@@ -163,6 +163,39 @@ int hex::HexToInt(char Hex0)
     return 0;
 }
 
+std::string hex::StringGetParam(std::string S, int N, char Delimiter)
+{
+    int C = 0;
+
+    if (N < 0)
+    {
+        for (int i = 0; i < S.size(); i++)
+        {
+            if (S[i] == Delimiter) C++;
+        }
+        return std::to_string(C);
+    }
+
+    int i0 = 0;
+    for (int i = 0; i < S.size(); i++)
+    {
+        if (S[i] == Delimiter)
+        {
+            if (C == (N - 1))
+            {
+                i0 = i + 1;
+            }
+            if (C == N)
+            {
+                return S.substr(i0, i - i0);
+            }
+            C++;
+        }
+    }
+
+    return "!";
+}
+
 int hex::StringIndexOf(std::string S, std::string Substr)
 {
     int I = S.find(Substr);

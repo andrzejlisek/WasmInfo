@@ -22,6 +22,7 @@ public:
     static int HexToInt(std::string Hex0);
     static int HexToInt(char Hex0);
 
+    static std::string StringGetParam(std::string S, int N, char Delimiter);
     static int StringIndexOf(std::string S, std::string Substr);
     static std::string StringFindReplace(std::string S, std::string From, std::string To);
     static std::string indent(int n);
