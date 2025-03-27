@@ -49,12 +49,21 @@ The **WasmInfo** has these options to view the file details:
 * **Item raw binary** \- The binary data of each item separately\.
 * **Item details** \- The item details depending on section and item\.
 * **Code binary size** \- The number of bytes between address and code text in some sections, which contains the data\.
-* **Code kind** \- The code kind to display in execudion code containing sections \(**Global**, **Code**, **Data**\)\.
-* **Branches** \- Branch interpretation and conversion in decompiled code\.
+* **Code kind** \- The code kind to display in execudion code containing sections:
+  * **Function names** \- Display the function names without function body\.
+  * **Disassembled** \- Display the disassembled code only\.
+  * **Decompiled** \- Display the decompiled code only\. If the disassembled code contains any error, the decompiled code will be displayed as empty function\.
+  * **Both** \- Display both disassembled and decompiled code simultaneously
+* **Branches** \- Branch interpretation and conversion in decompiled code:
+  * **Keep as numbers** \- Display unprocessed numbers in branch instructions\.
+  * **Convert into labels** \- Insert labels into code and replace the numbers with label names\.
+  * **Flatten block/loop** \- Convert numbers into labels and flatten every **block** and **loop** instruction\.
 * **Control flow** \- Style of decompiled code flow:
-  * Full \- Write code as generated from binary code\.
-  * Simplified \- Use stack simplification for most instructions\.
-  * Folded \- Fold instructions to eliminate some temporaty and stack variables\.
+  * **Details** \- Write detailed parameter assignmend from stack and result assignment to stack\.
+  * **Stack** \- Write stack assignment as parameters and results\. The code remains unfolded\.
+  * **Partial fold** \- Fold some assignment instructions, but keep most instruction for stack contents\.
+  * **Fold** \- Fold all instrucions as possible\. The stack contents will not be displayed\.
+* **Stack contents** \- Display stack contents for every instruction within disassembled and decompiled code\.
 * **Variable declare** \- Declate local and temporary variables at the first occurence\.
 * **Hungarian naming style** \- Use hungarian style for naming variables\.
 
@@ -84,6 +93,25 @@ The decompilation algorithm is simple and consists of the following steps \(simp
 * Find the first foldable instruction and places, where the result of the instruction is used\.
 * Fold the instruction by removing them and write the instruction in place of the result usage\.
 * Find the nest foldable instruction and repeat the action many times, while exists some foldable instructions in the code\.
+
+# Stack contents
+
+Within the code instructions, there can be displayed the stack contents for every single instruction\. The information consists of two elements:
+
+
+* Stack contents before instruction execution \- input stack\.
+* Stack contents after instruction execution \- output stack\.
+
+The stack contents consists of value types from left to right\. There are special characters:
+
+
+* **Underscore** \- Separator between elements
+* **Vertical bar** \- Stack block indicator like **block**, **loop**, **if** instructions\. The whole function is also code block\. Entering and leaving code blocks changes the vertical bar separator\.
+* **Asterisk** \- Indicates stack usage by the instruction\. The unused stack part is at the left side and the used stack part is at the right side as following:
+  * Input stack \- The parameters, which will be popped before execution\.
+  * Output stack \- The results, which will be pushed after execution\.
+  * The unused stack part is the same in both input and output stack\.
+* **Tilde** \- The stack is after instruction, whick makes the stack contents not applicable until end of block\. The case occurs, when the instruction are dead instruction and WebAssembly does not validate the stack contents\. These instructions are: unreachable, **throw**, **rethrow**, **br**, **return**, **return\_call**, **return\_call\_indirect**\.
 
 # Opcode coverage
 

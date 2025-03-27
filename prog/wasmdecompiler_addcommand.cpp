@@ -1,31 +1,101 @@
 #include "wasmdecompiler.h"
 
-void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::string par0, std::string par1, std::string par2)
+void wasmDecompiler::addCommandStackDummy(int valueType)
 {
-    // Adding final "end" command requires adding additional "return" command when the function returns value and the stack is not empty
-    if ((currentDepth == 1) && (raw[addr] == 0x0B))
+    unsigned char * raw0 = new unsigned char[10];
+    raw0[0] = 0;
+    raw0[1] = 0;
+    raw0[2] = 0;
+    raw0[3] = 0;
+    raw0[4] = 0;
+    raw0[5] = 0;
+    raw0[6] = 0;
+    raw0[7] = 0;
+    raw0[8] = 0;
+    raw0[9] = 0;
+    int raw0Size = 1;
+    std::string raw0Par0 = "";
+
+    switch (valueType)
     {
-        if (currentStack > 0)
-        {
-            unsigned char * dummyRaw = new unsigned char[4];
-            dummyRaw[0] = 0x0F;
-            dummyRaw[1] = 0x00;
-            dummyRaw[2] = 0x00;
-            dummyRaw[3] = 0x00;
-            switch (lastOpcode)
-            {
-                case 0x0F: // return
-                case 0x12: // return_call
-                case 0x13: // return_call_indirect
-                case 0x15: // return_call_ref
-                    break;
-                default:
-                    break;
-            }
-            addCommand(dummyRaw, 0, 1, "", "", "");
-            delete[] dummyRaw;
-        }
+        case fieldType_i32:
+            raw0[0] = 0x41;
+            raw0Size = 2;
+            raw0Par0 = dataFieldDictionarySet("0", fieldType_i32, "const", 0);
+            break;
+        case fieldType_i64:
+            raw0[0] = 0x42;
+            raw0Size = 2;
+            raw0Par0 = dataFieldDictionarySet("0", fieldType_i64, "const", 0);
+            break;
+        case fieldType_f32:
+            raw0[0] = 0x43;
+            raw0Size = 5;
+            raw0Par0 = dataFieldDictionarySet("0.0", fieldType_f32, "const", 0);
+            break;
+        case fieldType_f64:
+            raw0[0] = 0x44;
+            raw0Size = 9;
+            raw0Par0 = dataFieldDictionarySet("0.0", fieldType_f64, "const", 0);
+            break;
+        case fieldType_v128:
+            raw0[0] = 0xFD;
+            raw0[1] = 0x0C;
+            raw0Size = 10;
+            raw0Par0 = "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0";
+            break;
+        case -1: // Simulate "drop" to remove from stack
+            raw0[0] = 0x1A;
+            raw0Size = 1;
+            raw0Par0 = "";
+            break;
+        case -2: // Simulate "end"
+            raw0[0] = 0x0B;
+            raw0Size = 1;
+            raw0Par0 = "";
+            break;
+        case -3: // Simulate "return"
+            raw0[0] = 0x0F;
+            raw0Size = 1;
+            raw0Par0 = "";
+            break;
     }
+
+    addCommand(raw0, 0, raw0Size, raw0Par0, "", "", "x", "x", 0, 0, 0);
+
+    delete[] raw0;
+}
+
+void wasmDecompiler::addCommand(std::string instr, std::string par0, std::string par1, std::string par2, std::string stackI__, std::string stackO__, int stackP__, int stackR__, int stackS__)
+{
+    unsigned char * raw0 = new unsigned char[10];
+    raw0[0] = 0;
+    raw0[1] = 0;
+    raw0[2] = 0;
+    raw0[3] = 0;
+    raw0[4] = 0;
+    raw0[5] = 0;
+    raw0[6] = 0;
+    raw0[7] = 0;
+    raw0[8] = 0;
+    raw0[9] = 0;
+    int raw0Size = instr.size() / 2;
+    for (int i = 0; i < raw0Size; i++)
+    {
+        raw0[i] = hex::HexToInt(instr.substr(i << 1, 2));
+    }
+    addCommand(raw0, 0, raw0Size, par0, par1, par2, stackI__, stackO__, stackP__, stackR__, stackS__);
+    delete[] raw0;
+}
+
+void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::string par0, std::string par1, std::string par2, std::string stackI__, std::string stackO__, int stackP__, int stackR__, int stackS__)
+{
+    // Ignore instructions after "void"
+    if (stackS__ < 0)
+    {
+        return;
+    }
+
 
 
     // Create dummy instructions containing the function name
@@ -96,36 +166,88 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
 
     lastOpcode = opCode;
     Instr.get()->name = codeDef_[nameTbl][opCode & 255].nameDecomp;
+    Instr.get()->stackI__ = stackI__;
+    Instr.get()->stackO__ = stackO__;
+    Instr.get()->stackP__ = stackP__;
+    Instr.get()->stackR__ = stackR__;
+    Instr.get()->stackS__ = stackS__;
 
-    int stackP = atoi(codeDef_[nameTbl][opCode & 255].stackParam.c_str());
-    int stackR = atoi(codeDef_[nameTbl][opCode & 255].stackResult.c_str());
-    std::string codeParamStr = codeDef_[nameTbl][opCode & 255].paramAsm;
-    Instr.get()->returnType = codeDef_[nameTbl][opCode & 255].stackResultType;
-
-    bool stackSimplified = decompOptStackSimplify;
-
-
-    if (codeParamStr == "t")
+    switch (opCode)
     {
-        int stackP_ = 0;
-        int stackR_ = 0;
-        if (hex::StringGetParam(par1 + "||", 1, '|') == "")
-        {
-            stackP_ = atoi(hex::StringGetParam(par1 + "||", 0, '|').c_str());
-        }
-        else
-        {
-            stackP_ = atoi(hex::StringGetParam(par1 + "||", 0, '|').c_str());
-            stackR_ = atoi(hex::StringGetParam(par1 + "||", 1, '|').c_str());
-        }
-        stackP = stackP_;
-        //stackR = stackR_;
+        //case 0x02: // block
+        //case 0x04: // if
+        case 0x05: // else
+        //case 0x06: // try
+        case 0x07: // catch
+        case 0x19: // catch_all
+        //case 0x03: // loop
+        //case 0x0B: // end
+            stackP__ = 0;
+            stackR__ = 0;
+            Instr.get()->stackP__ = 0;
+            Instr.get()->stackR__ = 0;
+            break;
     }
+
+    std::vector<int> stackP_types;
+    std::vector<int> stackR_types;
+    {
+        int stackCounter = stackP__;
+        int stackPos = stackI__.size() - 1;
+        int stackPos0 = stackPos + 1;
+        while ((stackPos >= 0) && (stackCounter > 0))
+        {
+            if ((stackI__[stackPos] == '|') || (stackI__[stackPos] == '_'))
+            {
+                if ((stackPos0 - stackPos - 1) > 0)
+                {
+                    stackP_types.push_back(valueTypeNumber(stackI__.substr(stackPos + 1, stackPos0 - stackPos - 1)));
+                    stackCounter--;
+                }
+                stackPos0 = stackPos;
+            }
+            stackPos--;
+        }
+
+        stackCounter = stackR__;
+        stackPos = stackO__.size() - 1;
+        stackPos0 = stackPos + 1;
+        while ((stackPos >= 0) && (stackCounter > 0))
+        {
+            if ((stackO__[stackPos] == '|') || (stackO__[stackPos] == '_'))
+            {
+                if ((stackPos0 - stackPos - 1) > 0)
+                {
+                    stackR_types.push_back(valueTypeNumber(stackO__.substr(stackPos + 1, stackPos0 - stackPos - 1)));
+                    stackCounter--;
+                }
+                stackPos0 = stackPos;
+            }
+            stackPos--;
+        }
+    }
+
+
+    std::string codeParamStr = codeDef_[nameTbl][opCode & 255].paramAsm;
+
+    bool stackSimplifiedP = false;
+    bool stackSimplifiedR = false;
+
+    if (decompOptStackSimplify)
+    {
+        if (!decompOptFold)
+        {
+            stackSimplifiedP = true;
+        }
+        stackSimplifiedR = true;
+    }
+
 
     switch (opCode)
     {
         case 0x02: // block
-            stackSimplified = false;
+            //stackSimplifiedP = false;
+            //stackSimplifiedR = false;
             Instr.get()->branchType = 1;
             break;
         case 0x04: // if
@@ -137,15 +259,18 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
             {
                 Instr.get()->paramAdd(par0);
             }
-            stackSimplified = false;
+            //stackSimplifiedP = false;
+            //stackSimplifiedR = false;
             Instr.get()->branchType = 2;
             break;
         case 0x03: // loop
-            stackSimplified = false;
+            //stackSimplifiedP = false;
+            //stackSimplifiedR = false;
             Instr.get()->branchType = 3;
             break;
         case 0x0B: // end
-            stackSimplified = false;
+            //stackSimplifiedP = false;
+            //stackSimplifiedR = false;
             Instr.get()->branchType = 4;
             break;
         case 0x10: // call
@@ -155,44 +280,20 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
         case 0x14: // call_ref
         case 0x15: // return_call_ref
             {
-                std::string parStackP = hex::StringGetParam(par2, 0, '`');
-                std::string parStackR = hex::StringGetParam(par2, 1, '`');
                 std::string parFuncName = hex::StringGetParam(par2, 2, '`');
-
-                stackP = atoi(parStackP.c_str());
-                stackR = atoi(parStackR.c_str());
 
                 if ((opCode == 0x11) || (opCode == 0x13))
                 {
-                    stackP++;
                     Instr.get()->paramAdd(par0);
                     Instr.get()->paramAdd(par1);
                     Instr.get()->instrTextParamList = 2;
                 }
 
                 Instr.get()->name = hex::StringFindReplace(Instr.get()->name, "[#0#]", parFuncName);
-                switch (stackR)
-                {
-                    case 0:
-                        Instr.get()->returnType = 0;
-                        break;
-                    case 1:
-                        Instr.get()->returnType = std::atoi(hex::StringGetParam(par2, 3, '`').c_str());
-                        break;
-                    default:
-                        Instr.get()->returnType = fieldTypeCallFunc;
-                        Instr.get()->returnTypeList.clear();
-                        for (int i = 0; i < stackR; i++)
-                        {
-                            Instr.get()->returnTypeList.push_back(std::atoi(hex::StringGetParam(par2, 3 + i, '`').c_str()));
-                        }
-                        break;
-                }
             }
             break;
         case 0x0F: // return
             {
-                stackP = currentStack;
             }
             break;
         case 0x20: // local.get
@@ -228,24 +329,27 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
             break;
     }
 
-
-    if (stackSimplified)
+    if (stackSimplifiedP)
     {
-        for (int i = 0; i < stackP; i++)
+        for (int i = 0; i < stackP__; i++)
         {
-            Instr.get()->paramAdd(dataFieldDictionaryGetVar("stack", stackP - 1 - i));
+            Instr.get()->paramAdd(dataFieldDictionarySet("", stackP_types[stackP__ - 1 - i], "stack", stackS__ + i));
         }
     }
     else
     {
-        for (int i = 0; i < stackP; i++)
+        for (int i = 0; i < stackP__; i++)
         {
-            Instr.get()->paramAdd(dataFieldDictionarySet("", 0, "tempp", i + tempVarCounterP));
+            Instr.get()->paramAdd(dataFieldDictionarySet("", stackP_types[stackP__ - 1 - i], "tempp", i));
         }
     }
 
+
     Instr.get()->blockFold = false;
     Instr.get()->printComma = true;
+    Instr.get()->returnName = "";
+    Instr.get()->returnType = 0;
+    Instr.get()->isFoldable = false;
 
     switch (opCode)
     {
@@ -256,16 +360,16 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
             break;
         case 0x02: // block
         case 0x03: // loop
-            Instr.get()->paramAdd(par0);
+        case 0x06: // try
+            //Instr.get()->paramAdd(par0);
             Instr.get()->printComma = false;
             Instr.get()->blockFold = true;
             break;
         case 0x04: // if
         case 0x05: // else
-        case 0x06: // try
         case 0x07: // catch
-        case 0x0B: // end
         case 0x19: // catch_all
+        case 0x0B: // end
             Instr.get()->printComma = false;
             Instr.get()->blockFold = true;
             break;
@@ -279,60 +383,83 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
             break;
         case 0x20: // local.get
             Instr.get()->paramAdd(dataFieldDictionaryGetVar("local", atoi(par0.c_str())));
-            Instr.get()->returnType = fieldTypeVariable;
+            Instr.get()->isFoldable = true;
             break;
         case 0x21: // local.set
             Instr.get()->returnName = dataFieldDictionarySet("", 0, "local", atoi(par0.c_str()));
-            Instr.get()->returnType = fieldTypeVariable;
+            Instr.get()->isFoldable = true;
             break;
         case 0x22: // local.tee
             Instr.get()->returnName = dataFieldDictionarySet("", 0, "local", atoi(par0.c_str()));
-            Instr.get()->returnType = fieldTypeVariable;
-            Instr.get()->paramAdd(dataFieldDictionaryGetVar("stack", 0));
+            Instr.get()->returnType = dataFieldDictionaryGetType("local", atoi(par0.c_str()));
+            Instr.get()->paramAdd(dataFieldDictionaryGetVar("stack", stackS__ - 1));
+            Instr.get()->isFoldable = true;
             break;
         case 0x23: // global.get
             Instr.get()->paramAdd(dataFieldDictionaryGetVar("global", atoi(par0.c_str())));
-            Instr.get()->returnType = fieldTypeVariable;
+            Instr.get()->isFoldable = true;
             break;
         case 0x24: // global.set
             Instr.get()->returnName = dataFieldDictionarySet("", 0, "global", atoi(par0.c_str()));
-            Instr.get()->returnType = fieldTypeVariable;
+            Instr.get()->isFoldable = true;
+            break;
+        case 0x41: // i32.const
+        case 0x42: // i64.const
+        case 0x43: // f32.const
+        case 0x44: // f64.const
+            Instr.get()->isFoldable = true;
             break;
     }
 
-    Instr.get()->isFoldable = false;
-    if ((stackR == 1) && (Instr.get()->returnName == ""))
-    {
-        Instr.get()->returnName = dataFieldDictionarySet("", 0, "tempr", tempVarCounterR);
-    }
-    if (Instr.get()->returnName != "")
-    {
-        if (codeParamStr != "16b")
-        {
-            Instr.get()->isFoldable = true;
-        }
-    }
 
-    Instr.get()->returnNameItems.clear();
-    if (stackR > 1)
+    switch (stackR__)
     {
-        Instr.get()->returnName = "";
-        for (int i = 0; i < stackR; i++)
-        {
-            if (i > 0) Instr.get()->returnName = Instr.get()->returnName + ", ";
-            Instr.get()->returnName = Instr.get()->returnName + dataFieldDictionarySet("", 0, "tempr", i + tempVarCounterR);
-            Instr.get()->returnNameItems.push_back(dataFieldDictionarySet("", 0, "tempr", i + tempVarCounterR));
-        }
-        Instr.get()->returnName = "{" + Instr.get()->returnName + "}";
-    }
-    else
-    {
-        if (Instr.get()->returnName != "")
-        {
+        case 0:
+            break;
+        case 1:
+            Instr.get()->returnType = stackR_types[0];
+            if (Instr.get()->returnName == "")
+            {
+                if (stackSimplifiedR)
+                {
+                    Instr.get()->returnName = dataFieldDictionarySet("", Instr.get()->returnType, "stack", stackS__);
+                }
+                else
+                {
+                    Instr.get()->returnName = dataFieldDictionarySet("", Instr.get()->returnType, "tempr", 0);
+                }
+            }
             Instr.get()->returnNameItems.push_back(Instr.get()->returnName);
-        }
+            break;
+        default:
+            Instr.get()->returnName = "";
+            Instr.get()->returnNameItems.clear();
+            Instr.get()->returnTypeList.clear();
+            for (int i = 0; i < stackR__; i++)
+            {
+                if (i > 0) Instr.get()->returnName = Instr.get()->returnName + ", ";
+                std::string returnVarName = "";
+                if (stackSimplifiedR)
+                {
+                    returnVarName = dataFieldDictionarySet("", stackR_types[stackR__ - 1 - i], "stack", i + stackS__);
+                }
+                else
+                {
+                    returnVarName = dataFieldDictionarySet("", stackR_types[stackR__ - 1 - i], "tempr", i);
+                }
+                Instr.get()->returnName = Instr.get()->returnName + returnVarName;
+                Instr.get()->returnNameItems.push_back(returnVarName);
+                Instr.get()->returnTypeList.push_back(stackR_types[stackR__ - 1 - i]);
+            }
+            Instr.get()->returnName = "{" + Instr.get()->returnName + "}";
+            Instr.get()->returnType = fieldTypeCallFunc;
+            break;
     }
 
+    if ((!decompOptStackSimplify) && (Instr.get()->returnName != "") && (codeParamStr != "16b") && (stackR__ == 1))
+    {
+        Instr.get()->isFoldable = true;
+    }
 
     switch (opCode)
     {
@@ -342,39 +469,15 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
         case 0x05: // else
         case 0x07: // catch
         case 0x19: // catch_all
-            currentDepth--;
-            while (stackSizeBlock.size() <= (currentDepth))
-            {
-                stackSizeBlock.push_back(0);
-                stackSizeIf.push_back(-1);
-                stackSizeDiff.push_back(0);
-            }
-            stackSizeIf[currentDepth] = currentStack;
-            currentStack = stackSizeBlock[currentDepth];
-            break;
         case 0x0B: // end
             currentDepth--;
-            while (stackSizeBlock.size() <= (currentDepth))
             {
-                stackSizeBlock.push_back(0);
-                stackSizeIf.push_back(-1);
-                stackSizeDiff.push_back(0);
-            }
-            if (stackSizeIf[currentDepth] >= 0)
-            {
-                if (stackSizeIf[currentDepth] != currentStack)
+                while (indentStack.size() <= (currentDepth))
                 {
-                    WDF.additionalInstr(0, "", "!!! STACK WARNING !!!", 0);
+                    indentStack.push_back(wasmDecompilerIndentData());
                 }
             }
-            else
-            {
-                if (currentStack != stackSizeBlock[currentDepth])
-                {
-                    WDF.additionalInstr(0, "", "!!! STACK WARNING !!!", 0);
-                }
-            }
-            //currentStack = stackSizeBlock[currentDepth];
+
             break;
         case 0x0C: // br
         case 0x0E: // br_table
@@ -383,14 +486,6 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
         case 0x13: // return_call_indirect
         case 0x15: // return_call_ref
             {
-                if (currentStack > stackSizeBlock[currentDepth - 1])
-                {
-                    stackP = currentStack - stackSizeBlock[currentDepth - 1];
-                }
-                if (stackSizeBlock[currentDepth - 1] > currentStack)
-                {
-                    stackR = stackSizeBlock[currentDepth - 1] - currentStack;
-                }
             }
             break;
     }
@@ -401,24 +496,12 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
         Instr.get()->originalInstr.push_back(raw[addr + i]);
     }
 
-    int currentStack1 = currentStack;
-
-    if (!stackSimplified)
+    // Copy parameters from stack to temporary variables
+    if (!stackSimplifiedP)
     {
-        // Copy parameters from stack to temporary variables
-        for (int i = 0; i < stackP; i++)
+        for (int i = 0; i < stackP__; i++)
         {
-            WDF.additionalInstr(currentDepth, dataFieldDictionarySet("", dataFieldDictionaryGetType("stack", stackP - 1 - i), "tempp", i + tempVarCounterP), dataFieldDictionaryGetVar("stack", stackP - 1 - i), instrId);
-        }
-
-        // Remove parameters from the stack
-        if (stackP > 0)
-        {
-            currentStack -= stackP;
-            for (int i = 0; i < currentStack; i++)
-            {
-                WDF.additionalInstr(currentDepth, dataFieldDictionarySet("", dataFieldDictionaryGetType("stack", i + stackP), "stack", i), dataFieldDictionaryGetVar("stack", i + stackP), instrId);
-            }
+            WDF.additionalInstr(currentDepth, dataFieldDictionarySet("", stackP_types[stackP__ - 1 - i], "tempp", i), dataFieldDictionarySet("", stackP_types[stackP__ - 1 - i], "stack", stackS__ + i), instrId);
         }
     }
 
@@ -429,53 +512,14 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
     }
     WDF.params.push_back(Instr);
 
-    if (stackSimplified)
+    // Copy results from temporary variables to stack
+    if (!stackSimplifiedR)
     {
-        // More parameters are more than results ==> Remove stack items
-        if (stackP > stackR)
+        for (int i = 0; i < stackR__; i++)
         {
-            currentStack -= (stackP - stackR);
-            for (int i = stackR; i < currentStack; i++)
-            {
-                WDF.additionalInstr(currentDepth, dataFieldDictionarySet("", dataFieldDictionaryGetType("stack", i + stackP - stackR), "stack", i), dataFieldDictionaryGetVar("stack", i + stackP - stackR), instrId);
-            }
-        }
-
-        // Less parameters are more than results ==> Add stack items
-        if (stackP < stackR)
-        {
-            for (int i = currentStack - 1; i >= stackP; i--)
-            {
-                WDF.additionalInstr(currentDepth, dataFieldDictionarySet("", dataFieldDictionaryGetType("stack", i), "stack", i + stackR - stackP), dataFieldDictionaryGetVar("stack", i), instrId);
-            }
-            currentStack += (stackR - stackP);
+            WDF.additionalInstr(currentDepth, dataFieldDictionarySet("", stackR_types[stackR__ - 1 - i], "stack", stackS__ + i), dataFieldDictionarySet("", stackR_types[stackR__ - 1 - i], "tempr", i), instrId);
         }
     }
-    else
-    {
-
-        // Insert results to the stack
-        if (stackR > 0)
-        {
-            for (int i = currentStack - 1; i >= 0; i--)
-            {
-                WDF.additionalInstr(currentDepth, dataFieldDictionarySet("", dataFieldDictionaryGetType("stack", i), "stack", i + stackR), dataFieldDictionaryGetVar("stack", i), instrId);
-            }
-            currentStack += stackR;
-        }
-    }
-
-    // Copy result from temporary variables to stack
-    for (int i = 0; i < stackR; i++)
-    {
-        WDF.additionalInstr(currentDepth, dataFieldDictionarySet("", dataFieldDictionaryGetType("tempr", i + tempVarCounterR), "stack", stackR - 1 - i), dataFieldDictionaryGetVar("tempr", i + tempVarCounterR), instrId);
-    }
-
-    int currentStack2 = currentStack;
-    Instr.get()->stackP = stackP;
-    Instr.get()->stackR = stackR;
-    Instr.get()->stackI = currentStack1;
-    Instr.get()->stackO = currentStack2;
 
     switch (opCode)
     {
@@ -483,30 +527,21 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
         case 0x03: // loop
         case 0x04: // if
         case 0x06: // try
-            while (stackSizeBlock.size() <= (currentDepth))
+            while (indentStack.size() <= (currentDepth))
             {
-                stackSizeBlock.push_back(0);
-                stackSizeIf.push_back(-1);
-                stackSizeDiff.push_back(0);
+                indentStack.push_back(wasmDecompilerIndentData());
             }
-            stackSizeBlock[currentDepth] = currentStack;
-            stackSizeIf[currentDepth] = -1;
             currentDepth++;
             break;
         case 0x05: // else
         case 0x07: // catch
         case 0x19: // catch_all
-            while (stackSizeBlock.size() <= (currentDepth))
+            while (indentStack.size() <= (currentDepth))
             {
-                stackSizeBlock.push_back(0);
-                stackSizeIf.push_back(-1);
-                stackSizeDiff.push_back(0);
+                indentStack.push_back(wasmDecompilerIndentData());
             }
-            stackSizeBlock[currentDepth] = currentStack;
+            indentStack[currentDepth].instr = opCode;
             currentDepth++;
             break;
     }
-
-    tempVarCounterP = tempVarCounterP + stackP;
-    tempVarCounterR = tempVarCounterR + stackR;
 }

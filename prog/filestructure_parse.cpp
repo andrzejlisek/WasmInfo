@@ -214,7 +214,7 @@ void fileStructure::parseGlobal(sectionInfo &sectionInfo__)
         ptr++;
         ptr++;
 
-        parseInstructions(ptr, sectionSubInfo__);
+        parseInstructions(ptr, sectionSubInfo__, sectionSubInfo_.size(), 2);
 
         // Dummy set global instruction
         /*codeInstr codeInstr_;
@@ -257,7 +257,7 @@ void fileStructure::parseData(sectionInfo &sectionInfo__)
         // Instructions
         if (MemIdx == 0)
         {
-            parseInstructions(ptr, sectionSubInfo__);
+            parseInstructions(ptr, sectionSubInfo__, sectionSubInfo_.size(), 3);
             for (int ii = 0; ii < sectionSubInfo__._CodeInstr.size(); ii++)
             {
                 ptr += sectionSubInfo__._CodeInstr[ii].Size;
@@ -285,6 +285,9 @@ void fileStructure::parseData(sectionInfo &sectionInfo__)
 void fileStructure::parseCode(sectionInfo &sectionInfo__)
 {
     int ptr = sectionInfo__.SubAddr;
+
+    // Create stubs
+    int parseFunctionId_ = parseFunctionId;
     for (int i = 0; i < sectionInfo__.SubCount; i++)
     {
         sectionSubInfo sectionSubInfo__;
@@ -297,6 +300,7 @@ void fileStructure::parseCode(sectionInfo &sectionInfo__)
         sectionSubInfo__._CodeSize = leb128u(ptr);
         ptr += leb128Size;
         sectionSubInfo__._CodeAddr = ptr;
+
 
         int ptr_ = ptr;
         int vecLen = leb128u(ptr_);
@@ -313,17 +317,49 @@ void fileStructure::parseCode(sectionInfo &sectionInfo__)
             sectionSubInfo__._CodeLocalSize.push_back(s);
         }
 
-        int codeLen = parseInstructions(ptr_, sectionSubInfo__);
-        int codeLen0 = sectionSubInfo__._CodeSize - (ptr_ - ptr);
-        sectionSubInfo__._CodeGood = ((codeLen == codeLen0) && isCodeGood(sectionSubInfo__));
 
         ptr += sectionSubInfo__._CodeSize;
         sectionSubInfo__.ItemSize = ptr - sectionSubInfo__.ItemAddr;
         sectionSubInfo_.push_back(sectionSubInfo__);
     }
-    sectionInfo__.ParseStatus = (sectionInfo__.Size == (ptr - sectionInfo__.Addr)) ? 1 : 0;
+    parseFunctionId = parseFunctionId_;
 }
 
+void fileStructure::parseCode2(sectionInfo &sectionInfo__)
+{
+    int sectionSubInfoIdx = sectionSubInfo_.size() - sectionInfo__.SubCount;
+
+    int ptr = sectionInfo__.SubAddr;
+    for (int i = 0; i < sectionInfo__.SubCount; i++)
+    {
+        sectionSubInfo sectionSubInfo__ = sectionSubInfo_[sectionSubInfoIdx + i];
+        parseFunctionId++;
+        leb128u(ptr);
+        ptr += leb128Size;
+
+
+        int ptr_ = ptr;
+        int vecLen = leb128u(ptr_);
+        ptr_ += leb128Size;
+        sectionSubInfo__._CodeAddr_ = ptr_;
+        for (int ii = 0; ii < vecLen; ii++)
+        {
+            leb128u(ptr_);
+            ptr_ += leb128Size;
+            ptr_++;
+        }
+
+
+        int codeLen = parseInstructions(ptr_, sectionSubInfo__, sectionSubInfo_.size(), 1);
+        int codeLen0 = sectionSubInfo__._CodeSize - (ptr_ - ptr);
+        sectionSubInfo__._CodeGood = ((codeLen == codeLen0) && isCodeGood(sectionSubInfo__));
+
+        ptr += sectionSubInfo__._CodeSize;
+        sectionSubInfo_[sectionSubInfoIdx + i] = sectionSubInfo__;
+    }
+
+    sectionInfo__.ParseStatus = (sectionInfo__.Size == (ptr - sectionInfo__.Addr)) ? 1 : 0;
+}
 
 void fileStructure::parseStart(sectionInfo &sectionInfo__)
 {
@@ -445,6 +481,7 @@ void fileStructure::parseElement(sectionInfo &sectionInfo__)
 
 void fileStructure::parse(uchar * raw_, int rawSize_)
 {
+    wasmDecompiler_.codeInstrInfoLength = 0;
     raw = raw_;
     rawSize = rawSize_;
     sectionInfo_.clear();
@@ -523,5 +560,11 @@ void fileStructure::parse(uchar * raw_, int rawSize_)
         }
 
         sectionInfo_.push_back(sectionInfo__);
+
+        if (sectionInfo__.Id == 10)
+        {
+            parseCode2(sectionInfo__);
+            sectionInfo_[sectionInfo_.size() - 1] = sectionInfo__;
+        }
     }
 }

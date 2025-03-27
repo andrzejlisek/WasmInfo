@@ -1,23 +1,23 @@
-`unreachable();`0`0`unreachable()
+`unreachable();`0`ignore`unreachable()
 `nop();`0`0`nop()
-t`block ([~0~])[\n]{`0`0`block ([#1#])[\n]{
-t`loop ([~0~])[\n]{`0`0`loop ([#1#])[\n]{
+t`block ([~0~])[\n]{`0`0`block[\n]{
+t`loop ([~0~])[\n]{`0`0`loop[\n]{
 t`if ([~0~])[\n]{`1`0`if ([#1#])[\n]{
 `}[\n]else[\n]{`0`0`}[\n]else[\n]{
-t`try ([~0~])[\n]{`0`0`try ([#1#])[\n]{
+t`try ([~0~])[\n]{`0`0`try[\n]{
 u`}[\n]catch ([~0~])[\n]{`0`0`}[\n]catch ([~0~])[\n]{
-u`throw([~0~]);`0`0`throw([~0~])
-u`rethrow([~0~]);`0`0`rethrow([~0~])
+u`throw([~0~]);`0`ignore`throw([~0~])
+u`rethrow([~0~]);`0`ignore`rethrow([~0~])
 ``0`0`
 `}`0`0`}
-u`br([~0~]);`0`0`br([~0~])
+u`br([~0~]);`0`ignore`br([~0~])
 u`br_if([~0~]);`1`0`br_if([~0~], [~1~])
-uxu`br_table({[~0~]});`1`0`br_table({[~0~]}, [~1~])
-`return;`0`0`return [#1#]
+uxu`br_table({[~0~]});`1`ignore`br_table({[~0~]}, [~1~])
+`return;`0`ignore`return [#1#]
 u`call(function[[~0~]]); // [#0#]`0`0`[#0#]([#1#])
 uu`call_indirect(type[[~0~]], [~1~]); // [@0@]`0`0`call_indirect(type[[~0~]], [~1~], [#1#])
-u`return_call(function[[~0~]]); // [#0#]`0`0`return [#0#]([#1#])
-uu`return_call_indirect(type[[~0~]], [~1~]); // [@0@]`0`0`return_call_indirect(type[[~0~]], [~1~], [#1#])
+u`return_call(function[[~0~]]); // [#0#]`0`ignore`return [#0#]([#1#])
+uu`return_call_indirect(type[[~0~]], [~1~]); // [@0@]`0`ignore`return_call_indirect(type[[~0~]], [~1~], [#1#])
 ``0`0`
 ``0`0`
 ``0`0`
@@ -25,8 +25,8 @@ uu`return_call_indirect(type[[~0~]], [~1~]); // [@0@]`0`0`return_call_indirect(t
 ``0`0`
 `}[\n]catch_all[\n]{`0`0`}[\n]catch_all[\n]{
 `drop();`1`0`drop([~0~])
-`select();`3`par0`select([~0~], [~1~], [~2~])
-tx`select({[~0~]});`0`0`select({})
+`select();`3`par0`([!2!] ? [!0!] : [!1!])
+tx`select([~0~]);`3`par0`([!2!] ? [!0!] : [!1!])
 ``0`0`
 ``0`0`
 ``0`0`
@@ -190,11 +190,11 @@ f64`f64_const([~c~]);`0`f64`[~0~]
 `i64_reinterpret_f64();`1`i64`i64_reinterpret_f64([~0~])
 `f32_reinterpret_i32();`1`f32`f32_reinterpret_i32([~0~])
 `f64_reinterpret_i64();`1`f64`f64_reinterpret_i64([~0~])
-`i32_extend8_s();`1`i32`i32_extend8_s([~0~])?
-`i32_extend16_s();`1`i32`i32_extend16_s([~0~])?
-`i64_extend8_s();`1`i64`i64_extend8_s([~0~])?
-`i64_extend16_s();`1`i64`i64_extend16_s([~0~])?
-`i64_extend32_s();`1`i64`i64_extend32_s([~0~])?
+`i32_extend8_s();`1`i32`i32_extend8_s([~0~])
+`i32_extend16_s();`1`i32`i32_extend16_s([~0~])
+`i64_extend8_s();`1`i64`i64_extend8_s([~0~])
+`i64_extend16_s();`1`i64`i64_extend16_s([~0~])
+`i64_extend32_s();`1`i64`i64_extend32_s([~0~])
 ``0`0`
 ``0`0`
 ``0`0`
@@ -206,9 +206,9 @@ f64`f64_const([~c~]);`0`f64`[~0~]
 ``0`0`
 ``0`0`
 ``0`0`
-t`ref_null([~0~]);`0`0`ref_null()?
-`ref_is_null();`0`0`ref_is_null()?
-u`ref_func([~0~]);`0`0`ref_func()?
+t`ref_null([~0~]);`0`1`ref_null()
+`ref_is_null();`1`i32`ref_is_null([~0~])
+u`ref_func([~0~]);`0`funcref`ref_func([~0~])
 ``0`0`
 ``0`0`
 ``0`0`

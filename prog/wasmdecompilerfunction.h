@@ -11,10 +11,11 @@ class wasmDecompilerFunction
 {
 private:
 public:
-    int stackI = 0;
-    int stackP = 0;
-    int stackR = 0;
-    int stackO = 0;
+    std::string stackI__;
+    std::string stackO__;
+    int stackP__;
+    int stackR__;
+    int stackS__;
     bool stackPrint = false;
     wasmDecompilerFunction();
     std::string name = "";

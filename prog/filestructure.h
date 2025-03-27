@@ -42,7 +42,17 @@ private:
         std::string Param1;
         std::string Param2;
         int Depth;
+        int stackP;
+        int stackR;
+        int stackS;
+        std::string stackR_;
+        std::string stackI_;
+        std::string stackO_;
+        std::string errorMsg;
     };
+
+    std::string codeInstrInfoBlank();
+    std::string codeInstrInfo(codeInstr codeInstr_);
 
     struct sectionSubInfo
     {
@@ -83,12 +93,13 @@ private:
     void parseMemory(sectionInfo &sectionInfo__);
     void parseElement(sectionInfo &sectionInfo__);
     void parseCode(sectionInfo &sectionInfo__);
+    void parseCode2(sectionInfo &sectionInfo__);
     void parseStart(sectionInfo &sectionInfo__);
     void parseTag(sectionInfo &sectionInfo__);
     bool isCodeGood(sectionSubInfo &sectionSubInfo__);
     std::string valueTypeNameEx(int valueType);
     int parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__);
-    int parseInstructions(int addr, sectionSubInfo &sectionSubInfo__);
+    int parseInstructions(int addr, sectionSubInfo &sectionSubInfo__, int sectionSubInfoI, int returnTypeX);
     std::string instructionText(codeInstr codeInstr_, int fidx);
     std::string itemInfoText(sectionSubInfo &sectionSubInfo__);
     std::string sizeText(int minVal, int maxVal);
@@ -118,6 +129,7 @@ private:
     std::string correctFunctionName(std::string funcName);
     int getVarTypeG(int idx);
     int getVarTypeL(int idx, int fidx_);
+    int getVarTypeL(int idx, int fidx_, sectionSubInfo &sectionSubInfo__);
     std::string getGlobalVarName(int num, bool def, int valType);
     int getTypeListItemByTag(int num);
     std::string getFunctionType(int funcType, std::string funcName, int &localNum);

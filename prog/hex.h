@@ -24,8 +24,10 @@ public:
 
     static std::string StringGetParam(std::string S, int N, char Delimiter);
     static int StringIndexOf(std::string S, std::string Substr);
+    static std::string StringFindReplaceFirst(std::string S, std::string From, std::string To);
     static std::string StringFindReplace(std::string S, std::string From, std::string To);
     static std::string indent(int n);
+    static std::string pad(int n);
 private:
     static std::string floatToStr_(std::string NumStr, int Digits);
 public:

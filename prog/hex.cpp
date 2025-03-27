@@ -202,6 +202,27 @@ int hex::StringIndexOf(std::string S, std::string Substr)
     return I;
 }
 
+std::string hex::StringFindReplaceFirst(std::string S, std::string From, std::string To)
+{
+    if (From == To)
+    {
+        return S;
+    }
+
+    if (S == From)
+    {
+        return To;
+    }
+    int FromLen = From.length();
+    int FromPos = S.find(From);
+    if (FromPos != std::string::npos)
+    {
+        S.replace(FromPos, FromLen, To);
+        FromPos = S.find(From);
+    }
+    return S;
+}
+
 std::string hex::StringFindReplace(std::string S, std::string From, std::string To)
 {
     if (From == To)
@@ -229,6 +250,17 @@ std::string hex::indent(int n)
     while (n > 0)
     {
         S.push_back(' ');
+        S.push_back(' ');
+        n--;
+    }
+    return S;
+}
+
+std::string hex::pad(int n)
+{
+    std::string S = "";
+    while (n > 0)
+    {
         S.push_back(' ');
         n--;
     }

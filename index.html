@@ -30,9 +30,10 @@
     <label for="infoItemRaw">Item raw binary</label> <input type="checkbox" id="infoItemRaw" name="infoItemRaw" onchange="printWasmInfo()"><br>
     <label for="infoCode">Item details</label> <input type="checkbox" id="infoCode" name="infoCode" checked="checked" onchange="printWasmInfo()"><br> 
     <label for="binSize">Code binary size</label> <input type="number" id="binSize" name="binSize" value="16" min="1" max="99" onchange="printWasmInfo()"><br>
-    <label for="codeType">Code kind</label> <select id="codeType" onchange="printWasmInfo()"><option selected="selected">None</option><option>Disassembled</option><option>Decomplided</option><option>Both</option></select><br>
-    <label for="codeBranch">Branches</label> <select id="codeBranch" onchange="printWasmInfo()"><option selected="selected">Numbers and blocks</option><option>Labels with blocks</option><option>Labels only</option></select><br>
-    <label for="decompStack">Control flow</label> <select id="decompStack" onchange="printWasmInfo()"><option selected="selected">Full</option><option>Simplified</option><option>Folded</option></select><br>
+    <label for="codeType">Code kind</label> <select id="codeType" onchange="printWasmInfo()"><option selected="selected">Function names</option><option>Disassembled</option><option>Decomplided</option><option>Both</option></select><br>
+    <label for="codeBranch">Branches</label> <select id="codeBranch" onchange="printWasmInfo()"><option>Keep as numbers</option><option selected="selected">Convert into labels</option><option>Flatten block/loop</option></select><br>
+    <label for="decompFlow">Control flow</label> <select id="decompFlow" onchange="printWasmInfo()"><option>Details</option><option selected="selected">Stack</option><option>Partial fold</option><option>Fold</option></select><br>
+    <label for="decompStack">Stack contents</label> <input type="checkbox" id="decompStack" name="decompStack" onchange="printWasmInfo()"><br>
     <label for="decompDecl">Variable declare</label> <input type="checkbox" id="decompDecl" name="decompDecl" checked="checked" onchange="printWasmInfo()"><br>
     <label for="decompHung">Hungarian naming style</label> <input type="checkbox" id="decompHung" name="decompHung" checked="checked" onchange="printWasmInfo()"><br>
 
@@ -331,11 +332,10 @@ function FileBrwUploadEvent()
             const t4 = document.getElementById("infoCode").checked ? 1 : 0;
             const t5 = document.getElementById("codeType").selectedIndex;
             const t6 = document.getElementById("codeBranch").selectedIndex;
-            let t7 = 0;
-            if (document.getElementById("decompStack").selectedIndex == 1) t7 += 2;
-            if (document.getElementById("decompStack").selectedIndex == 2) t7 += 3;
+            let t7 = document.getElementById("decompFlow").selectedIndex;
             if (document.getElementById("decompDecl").checked) t7 += 4;
             if (document.getElementById("decompHung").checked) t7 += 8;
+            if (document.getElementById("decompStack").checked) t7 += 16;
             
             document.getElementById("wasmInfo99").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s, 99, t1, t2, t3, t4, t5, t6, t7]);
             document.getElementById("wasmInfo00").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s,  0, t1, t2, t3, t4, t5, t6, t7]);

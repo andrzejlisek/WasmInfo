@@ -7,6 +7,7 @@
 #include <iostream>
 #include "hex.h"
 #include "wasmdecompilerfunction.h"
+#include "wasmdecompilerindentdata.h"
 
 class wasmDecompiler
 {
@@ -16,10 +17,19 @@ public:
     constexpr static int fieldType_f32 = 0x7D;
     constexpr static int fieldType_f64 = 0x7C;
     constexpr static int fieldType_v128 = 0x7B;
-    constexpr static int fieldType_u = 0x01;
+    constexpr static int fieldType_u_ = 0x01;
+    constexpr static int fieldType_void = 0x40;
+    constexpr static int fieldType_funcref = 0x70;
+    constexpr static int fieldType_externref = 0x6F;
+    constexpr static int fieldType_exnref = 0x69;
 
+    constexpr static int fieldTypeIgnore = 255;
     constexpr static int fieldTypeVariable = 255;
     constexpr static int fieldTypeCallFunc = 254;
+
+    constexpr static int branchBlock = 1;
+    constexpr static int branchLoop = 3;
+    constexpr static int branchEnd = 4;
 
     struct dataField2
     {
@@ -55,23 +65,16 @@ private:
         int type;
     };
 
-    std::string dataFieldPrintName(dataField N)
-    {
-        if (N.type >= 256)
-        {
-            return "c" + valueTypeName(N.type - 256) + "_" + N.name;
-        }
-        else
-        {
-            return valueTypeName(N.type) + "_" + N.name;
-        }
-    }
-
     std::string debugValues();
 
     wasmDecompilerFunction WDF;
     int currentDepth;
     int currentStack;
+    std::vector<int> currentStack_;
+    std::vector<int> currentStackStackP;
+    std::vector<int> currentStackStackR;
+    std::vector<std::string> currentStackStackP_;
+    std::vector<std::string> currentStackStackR_;
 
     void convertBlockToLabels();
     void codeOptimize();
@@ -80,14 +83,34 @@ private:
     std::vector<int> localVarNamesD;
 
     int lastOpcode;
-    std::vector<int> stackSizeBlock;
-    std::vector<int> stackSizeIf;
-    std::vector<int> stackSizeDiff;
-    int tempVarCounterP;
-    int tempVarCounterR;
+    std::vector<wasmDecompilerIndentData> indentStack;
+    std::vector<int> valueTypeXNumber;
+    std::vector<std::string> valueTypeXName;
 
 public:
+
+    bool instrBlockBegin(std::string txt);
+    bool instrBlockEnd(std::string txt);
+
     wasmDecompiler();
+
+    int codeInstrInfoLength = 0;
+    int codeInstrInfoLengthDebug = 5;
+
+    bool codeInstrInfoStack = true;
+
+    void currentStackIgnore();
+    void currentStackPush(int valType);
+    bool currentStackPop();
+    int currentStackSize(int sizeType);
+    std::string currentStackPrint();
+    bool currentStackBlockPush(int stackP, int stackR, std::string stackP_, std::string stackR_);
+    bool currentStackBlockPop();
+    void currentStackBlockPrepare(int stackP, int stackR, std::string stackP_, std::string stackR_);
+    void currentStackBlockRestore(bool clearParams);
+    std::string stackPrintInfo(std::string stackInfo, int stackDepth);
+    std::string stackPrintInfoFull(int stackSize, std::string stackInfoI, int stackDepthI, std::string stackInfoO, int stackDepthO);
+    std::string stackPrintInfoBlank();
 
     struct codeDef
     {
@@ -103,8 +126,9 @@ public:
 
     std::string funcName;
     void reset(std::string funcName_, int decompBranch_, std::vector<dataField2> dataFieldDictionary_);
-    void addCommand(unsigned char * raw, int addr, int size, std::string par0, std::string par1, std::string par2);
-    void dataFieldDictionaryClear();
+    void addCommand(unsigned char * raw, int addr, int size, std::string par0, std::string par1, std::string par2, std::string stackI__, std::string stackO__, int stackP__, int stackR__, int stackS__);
+    void addCommand(std::string instr, std::string par0, std::string par1, std::string par2, std::string stackI__, std::string stackO__, int stackP__, int stackR__, int stackS__);
+    void addCommandStackDummy(int valueType);
     std::string dataFieldDictionaryGetVar(std::string category, int num);
     std::string dataFieldDictionaryGetConst(int type, std::string val);
     int dataFieldDictionaryGetType(std::string category, int num);
@@ -114,6 +138,7 @@ public:
     std::string dataFieldDictionaryDisplay(std::string id);
     std::string printCommand(int idx);
     std::string valueTypeName(int typeSig);
+    int valueTypeNumber(std::string typeSig);
 private:
     std::string dataName(int idx, int t);
 };
