@@ -48,7 +48,6 @@ int fileStructure::parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__)
     }
     instrParamType = codeDef__.paramAsm;
 
-
     if (instrParamType == "")
     {
         InstrSize = 1;
@@ -57,8 +56,17 @@ int fileStructure::parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__)
     if (instrParamType == "t")
     {
         instrParamType = "";
-        codeInstr_.Param0 = valueTypeNameEx(raw[ptr + 1]);
-        codeInstr_.Param1 = valueTypeNameEx(0 - (int)(raw[ptr + 1]));
+        int t = 0;
+        if (wasmDecompiler_.valueTypeIsStandard(raw[ptr + 1]))
+        {
+            t = raw[ptr + 1];
+        }
+        else
+        {
+            t = leb128u(ptr + 1);
+        }
+        codeInstr_.Param0 = valueTypeNameEx(t);
+        codeInstr_.Param1 = valueTypeNameEx(0 - t);
         InstrSize = 2;
     }
 
@@ -314,17 +322,16 @@ int fileStructure::parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__)
         case 0x15: // return_call_ref
             {
                 int typeIdx = 0;
-                int dummy = -3;
                 int stackP1 = 0;
                 switch (codeInstr_.Opcode)
                 {
                     case 0x11: // call_indirect
                     case 0x13: // return_call_indirect
                         stackP1 = 1;
-                        typeIdx = atoi(getFunctionType(atoi(codeInstr_.Param0.c_str()), "{~}", dummy).c_str());
+                        typeIdx = atoi(getFunctionNameById(getFunctionNameByIdMode::funcTypeNumber, getFunctionNameByIdNumber::type, atoi(codeInstr_.Param0.c_str())).c_str());
                         break;
                     default:
-                        typeIdx = atoi(getFunctionNameById(-1, atoi(codeInstr_.Param0.c_str()), -3).c_str());
+                        typeIdx = atoi(getFunctionNameById(getFunctionNameByIdMode::funcTypeNumber, getFunctionNameByIdNumber::whole, atoi(codeInstr_.Param0.c_str())).c_str());
                         break;
                 }
 
@@ -430,10 +437,7 @@ int fileStructure::parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__)
         codeInstr_.stackS = wasmDecompiler_.currentStackSize(0);
     }
 
-    if (wasmDecompiler_.codeInstrInfoStack)
-    {
-        wasmDecompiler_.stackPrintInfoFull(codeInstr_.stackS, codeInstr_.stackI_, codeInstr_.stackP, codeInstr_.stackO_, codeInstr_.stackR);
-    }
+    wasmDecompiler_.stackPrintInfoFull(codeInstr_.stackS, codeInstr_.stackI_, codeInstr_.stackP, codeInstr_.stackO_, codeInstr_.stackR);
 
 
     sectionSubInfo__._CodeInstr.push_back(codeInstr_);
@@ -450,12 +454,12 @@ int fileStructure::parseInstructions(int addr, sectionSubInfo &sectionSubInfo__,
     wasmDecompiler_.dataFieldDictionary.clear();
 
     int localNum = 0;
-    getFunctionName(sectionSubInfo__.Index, 0, localNum);
+    getFunctionNameByIdLocalNum(getFunctionNameByIdMode::funcCode, getFunctionNameByIdNumber::internal, sectionSubInfo__.Index, localNum);
     {
         int iii = 0;
         while (getVarTypeG(iii) != 0)
         {
-            wasmDecompiler_.dataFieldDictionarySet(getGlobalVarName(iii, false, 0), getVarTypeG(iii), "global", iii);
+            wasmDecompiler_.dataFieldDictionarySet(getGlobalVarName(iii, false, 0, false), getVarTypeG(iii), "global", iii);
             iii++;
         }
     }
@@ -490,14 +494,10 @@ int fileStructure::parseInstructions(int addr, sectionSubInfo &sectionSubInfo__,
     }
     if (returnTypeX == 3)
     {
-        returnNum = 0;
-        returnStr = "void";
+        returnNum = 1;
+        returnStr = "i32";
     }
     wasmDecompiler_.currentStackBlockPrepare(0, returnNum, "", returnStr + "_");
-    if (returnTypeX == 3)
-    {
-        returnStr = "";
-    }
 
 
     while ((BlockDepth > 0) && (testN > 0))

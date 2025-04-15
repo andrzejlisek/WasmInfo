@@ -5,6 +5,7 @@
 #include <vector>
 #include <sstream>
 #include <iostream>
+#include <unordered_map>
 #include "hex.h"
 #include "wasmdecompilerfunction.h"
 #include "wasmdecompilerindentdata.h"
@@ -12,6 +13,9 @@
 class wasmDecompiler
 {
 public:
+    bool useHtml = true;
+    bool useTags = true;
+
     constexpr static int fieldType_i32 = 0x7F;
     constexpr static int fieldType_i64 = 0x7E;
     constexpr static int fieldType_f32 = 0x7D;
@@ -47,6 +51,32 @@ public:
     bool decompOptStackSimplify = true;
     bool decompOptVariableDeclare = true;
     bool decompOptVariableHungarian = true;
+
+    void metaTagClear();
+    void metaTagRemoveLast(int n);
+    void metaTagAdd(int type, int idx, int idxx, std::string name);
+    std::string metaTagGetInfo(int vecIdx);
+    bool metaTagValid;
+    int metaTagFunctionNumber = 0;
+
+    std::string metaTagGetTempl(int type, int idx, std::string namePre, std::string nameSuf);
+    std::string metaTagGet(int type, int idx, std::string name);
+    std::string metaTagGet2(int type, int idx, int idxx, std::string name);
+    void metaTagValidateNames();
+
+    std::unordered_map<std::string, std::string> metaTagCache;
+
+    struct metaTagDef
+    {
+        int type;
+        int idx;
+        int idxx;
+        std::string name;
+        std::string sysname;
+    };
+    std::vector<metaTagDef> metaTag;
+
+    std::string correctFunctionName(std::string funcName);
 
 private:
     bool debugInfo = false;
@@ -126,9 +156,11 @@ public:
 
     std::string funcName;
     void reset(std::string funcName_, int decompBranch_, std::vector<dataField2> dataFieldDictionary_);
+    int addCommandBloop;
     void addCommand(unsigned char * raw, int addr, int size, std::string par0, std::string par1, std::string par2, std::string stackI__, std::string stackO__, int stackP__, int stackR__, int stackS__);
     void addCommand(std::string instr, std::string par0, std::string par1, std::string par2, std::string stackI__, std::string stackO__, int stackP__, int stackR__, int stackS__);
     void addCommandStackDummy(int valueType);
+    std::vector<unsigned char> dummyRaw;
     std::string dataFieldDictionaryGetVar(std::string category, int num);
     std::string dataFieldDictionaryGetConst(int type, std::string val);
     int dataFieldDictionaryGetType(std::string category, int num);
@@ -139,6 +171,10 @@ public:
     std::string printCommand(int idx);
     std::string valueTypeName(int typeSig);
     int valueTypeNumber(std::string typeSig);
+    bool valueTypeIsStandard(int typeSig);
+
+    std::string htmlPrefix(int id, int idx);
+    std::string htmlSuffix(int id, int idx);
 private:
     std::string dataName(int idx, int t);
 };

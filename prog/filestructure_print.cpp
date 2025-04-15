@@ -29,41 +29,41 @@ std::string fileStructure::codeInstrInfo(codeInstr codeInstr_)
 }
 
 
-void fileStructure::printCodeText(std::stringstream &ss, int addr, int count)
+void fileStructure::printCodeText(stringBuf &sb, int addr, int count)
 {
     if (addr >= 0)
     {
-        ss << hex::IntToHex32(addr) << ":";
+        sb.append(hex::IntToHex32(addr)).append(":");
         if (count > codeBinSize)
         {
             count = codeBinSize;
         }
         for (int i = 0; i < count; i++)
         {
-            ss << " " << hex::IntToHex8(raw[addr + i]);
+            sb.append(" ").append(hex::IntToHex8(raw[addr + i]));
         }
         for (int i = count; i < codeBinSize; i++)
         {
-            ss << "   ";
+            sb.append("   ");
         }
     }
     else
     {
-        ss << "         ";
+        sb.append("         ");
         for (int i = 0; i < codeBinSize; i++)
         {
-            ss << "   ";
+            sb.append("   ");
         }
     }
-    ss << "  ";
+    sb.append("  ");
 }
 
-void fileStructure::printCodeInstr(std::stringstream &ss, std::vector<codeInstr> &codeInstr_, int fidx, int decompType)
+void fileStructure::printCodeInstr(stringBuf &sb, std::vector<codeInstr> &codeInstr_, int fidx, int decompType)
 {
     bool noCodeError = true;
     for (int iii = 0; iii < codeInstr_.size(); iii++)
     {
-        if (codeInstr_[iii].errorMsg.size() > 0)
+        if (!codeInstr_[iii].errorMsg.empty())
         {
             noCodeError = false;
         }
@@ -75,6 +75,23 @@ void fileStructure::printCodeInstr(std::stringstream &ss, std::vector<codeInstr>
     if (!noCodeError)
     {
         wasmDecompiler_.addCommandStackDummy(-2);
+    }
+
+    // Search for bloop
+    wasmDecompiler_.addCommandBloop = 0;
+    for (int iii = 0; iii < codeInstr_.size(); iii++)
+    {
+        switch (raw[codeInstr_[iii].Addr])
+        {
+            case 0x02: // block
+            case 0x03: // loop
+                if (wasmDecompiler_.addCommandBloop == 0) wasmDecompiler_.addCommandBloop = 1;
+                break;
+            case 0x0C: // br
+            case 0x0D: // br_if
+                wasmDecompiler_.addCommandBloop = 2;
+                break;
+        }
     }
     for (int iii = 0; iii < codeInstr_.size(); iii++)
     {
@@ -94,16 +111,16 @@ void fileStructure::printCodeInstr(std::stringstream &ss, std::vector<codeInstr>
                     {
                         case 0x11: // call_indirect
                         case 0x13: // return_call_indirect
-                            typeIdx = atoi(getFunctionType(atoi(codeInstr_[iii].Param0.c_str()), "{~}", dummy).c_str());
+                            typeIdx = atoi(getFunctionNameById(getFunctionNameByIdMode::funcTypeNumber, getFunctionNameByIdNumber::type, atoi(codeInstr_[iii].Param0.c_str())).c_str());
                             break;
                         default:
-                            typeIdx = atoi(getFunctionNameById(-1, atoi(codeInstr_[iii].Param0.c_str()), -3).c_str());
+                            typeIdx = atoi(getFunctionNameById(getFunctionNameByIdMode::funcTypeNumber, getFunctionNameByIdNumber::whole, atoi(codeInstr_[iii].Param0.c_str())).c_str());
                             break;
                     }
 
                     int stackP = sectionSubInfo_[typeIdx]._TypeParams.size();
                     int stackR = sectionSubInfo_[typeIdx]._TypeReturn.size();
-                    std::string stackInfo = std::to_string(stackP) + "`" + std::to_string(stackR) + "`" + getFunctionNameById(-1, atoi(codeInstr_[iii].Param0.c_str()), -1) + "`";
+                    std::string stackInfo = std::to_string(stackP) + "`" + std::to_string(stackR) + "`" + getFunctionNameById(getFunctionNameByIdMode::funcNameString, getFunctionNameByIdNumber::whole, atoi(codeInstr_[iii].Param0.c_str())) + "`";
                     for (int iiii = 0; iiii < sectionSubInfo_[typeIdx]._TypeReturn.size(); iiii++)
                     {
                         stackInfo = stackInfo + std::to_string(sectionSubInfo_[typeIdx]._TypeReturn[iiii]) + "`";
@@ -135,7 +152,7 @@ void fileStructure::printCodeInstr(std::stringstream &ss, std::vector<codeInstr>
                 {
                     if (noCodeError)
                     {
-                        if ((codeInstr_[iii].stackO_.size() > 0) && (codeInstr_[iii].stackO_[0] != '|') && (((int)codeInstr_[iii].stackI_.find("void")) < 0))
+                        if ((!codeInstr_[iii].stackO_.empty()) && (codeInstr_[iii].stackO_[0] != '|') && (((int)codeInstr_[iii].stackI_.find("void")) < 0))
                         {
                             int returnCount = 0;
                             for (int i = 0; i < wasmDecompiler_.dataFieldDictionary.size(); i++)
@@ -200,18 +217,18 @@ void fileStructure::printCodeInstr(std::stringstream &ss, std::vector<codeInstr>
                 int idxPos = instrTextLinePos[i - 1] + 1;
                 int idxLen = instrTextLinePos[i] - idxPos;
 
-                printCodeText(ss, codeInstr_[iii].Addr, codeInstr_[iii].Size);
+                printCodeText(sb, codeInstr_[iii].Addr, codeInstr_[iii].Size);
 
                 if ((codeInstr_[iii].Depth > 0) && (i == stackPos))
                 {
-                    ss << codeInstrInfo(codeInstr_[iii]);
+                    sb.append(codeInstrInfo(codeInstr_[iii]));
                 }
                 else
                 {
-                    ss << codeInstrInfoBlank();
+                    sb.append(codeInstrInfoBlank());
                 }
 
-                ss << hex::indent(codeInstr_[iii].Depth) << instrText.substr(idxPos, idxLen) << codeInstr_[iii].errorMsg << std::endl;
+                sb.append(hex::indent(codeInstr_[iii].Depth)).append(instrText.substr(idxPos, idxLen)).append(codeInstr_[iii].errorMsg).eol();
             }
         }
     }
@@ -224,32 +241,27 @@ void fileStructure::printCodeInstr(std::stringstream &ss, std::vector<codeInstr>
             int decompInstrLine = hex::StringIndexOf(decompInstr, "[\\n]");
             while (decompInstrLine > 0)
             {
-                printCodeText(ss, -1, 0);
-                ss << decompInstr.substr(0, decompInstrLine) << std::endl;
+                printCodeText(sb, -1, 0);
+                sb.append(decompInstr.substr(0, decompInstrLine)).eol();
                 decompInstr = decompInstr.substr(decompInstrLine + 4);
                 decompInstrLine = hex::StringIndexOf(decompInstr, "[\\n]");
             }
 
-            printCodeText(ss, -1, 0);
-            ss << decompInstr << std::endl;
+            printCodeText(sb, -1, 0);
+            sb.append(decompInstr).eol();
             idx++;
             decompInstr = wasmDecompiler_.printCommand(idx);
         }
     }
-}
-
-std::string fileStructure::correctFunctionName(std::string funcName)
-{
-    std::string funcName0 = "";
-    for (int i = 0; i < funcName.size(); i++)
+    else
     {
-        bool std = false;
-        if ((funcName[i] >= '0') && (funcName[i] <= '9')) std = true;
-        if ((funcName[i] >= 'A') && (funcName[i] <= 'Z')) std = true;
-        if ((funcName[i] >= 'a') && (funcName[i] <= 'z')) std = true;
-        funcName0.push_back(std ? funcName[i] : '_');
+        std::string decompInstr = wasmDecompiler_.printCommand(0);
+        if (decompInstr != "`")
+        {
+            printCodeText(sb, -1, 0);
+            sb.append(decompInstr).eol();
+        }
     }
-    return funcName0;
 }
 
 int fileStructure::getVarTypeG(int idx)
@@ -448,9 +460,9 @@ int fileStructure::getVarTypeL(int idx, int fidx_, sectionSubInfo &sectionSubInf
     return 0;
 }
 
-std::string fileStructure::getGlobalVarName(int num, bool def, int valType)
+std::string fileStructure::getGlobalVarName(int num, bool def, int valType, bool rawname)
 {
-    for (int iii = 0; iii < sectionInfo_.size(); iii++)
+    /*for (int iii = 0; iii < sectionInfo_.size(); iii++)
     {
         // Name in import / Name in export
         if ((sectionInfo_[iii].Id == 2) || (sectionInfo_[iii].Id == 7))
@@ -461,22 +473,35 @@ std::string fileStructure::getGlobalVarName(int num, bool def, int valType)
                 {
                     if (sectionSubInfo_[iiii]._FunctionIdx == num)
                     {
-                        return correctFunctionName(sectionSubInfo_[iiii]._FunctionName);
+                        if (rawname)
+                        {
+                            return sectionSubInfo_[iiii]._FunctionName;
+                        }
+                        else
+                        {
+                            return wasmDecompiler_.correctFunctionName(sectionSubInfo_[iiii]._FunctionName);
+                        }
                     }
                 }
             }
         }
+    }*/
+
+    if (rawname)
+    {
+        return wasmDecompiler_.metaTagGet(7, num, "");
     }
 
     if (def)
     {
+        std::string varDispName = wasmDecompiler_.metaTagGet(107, num, "global" + std::to_string(num));
         if (wasmDecompiler_.decompOptVariableHungarian)
         {
-            return wasmDecompiler_.valueTypeName(valType) + "_global" + std::to_string(num);
+            return wasmDecompiler_.valueTypeName(valType) + "_" + varDispName;
         }
         else
         {
-            return "global" + std::to_string(num);
+            return varDispName;
         }
     }
     else
@@ -523,163 +548,170 @@ int fileStructure::getTypeListItemByTag(int num)
     return -1;
 }
 
-std::string fileStructure::getFunctionType(int funcType, std::string funcName, int &localNum)
+std::string fileStructure::getFunctionNameById(getFunctionNameByIdMode mode, getFunctionNameByIdNumber number, int idx)
 {
-    switch (localNum)
+    int localNum_ = 0;
+    return getFunctionNameByIdLocalNum(mode, number, idx, localNum_);
+}
+
+std::string fileStructure::getFunctionNameByIdLocalNum(getFunctionNameByIdMode mode, getFunctionNameByIdNumber number, int idx, int &localNum)
+{
+    std::string funcName = wasmDecompiler_.metaTagGet(101, idx, "function" + std::to_string(idx));
+    int funcType = -1;
+
+    // Calc import function count
+    int importCount = 0;
+    if ((number == getFunctionNameByIdNumber::whole) || (number == getFunctionNameByIdNumber::import))
     {
-        case -1:
-            return correctFunctionName(funcName);
-        case -2:
-            return std::to_string(funcType);
+        for (int i_ = 0; i_ < sectionInfo_.size(); i_++)
+        {
+            if (sectionInfo_[i_].Id == 2) // Import - name and type
+            {
+                for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
+                {
+                    if (sectionSubInfo_[ii0]._FunctionTag == 0)
+                    {
+                        if (importCount < (sectionSubInfo_[ii0].Index + 1))
+                        {
+                            importCount = (sectionSubInfo_[ii0].Index + 1);
+                        }
+                        if (idx == sectionSubInfo_[ii0].Index)
+                        {
+                            //funcName = wasmDecompiler_.correctFunctionName(sectionSubInfo_[ii0]._FunctionName);
+                            funcType = sectionSubInfo_[ii0]._CodeSize;
+                        }
+                    }
+                }
+            }
+        }
+        if (number == getFunctionNameByIdNumber::import)
+        {
+            return std::to_string(importCount);
+        }
     }
+
+    if (localNum > 0) { localNum = 0; }
+
+    // find function name and type
+    if (number == getFunctionNameByIdNumber::type)
+    {
+        funcName = "template";
+        for (int i_ = 0; i_ < sectionInfo_.size(); i_++)
+        {
+            if (sectionInfo_[i_].Id == 1) // Type
+            {
+                for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
+                {
+                    if (idx == sectionSubInfo_[ii0].Index)
+                    {
+                        funcType = sectionSubInfo_[ii0].Index;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        for (int i_ = 0; i_ < sectionInfo_.size(); i_++)
+        {
+            /*if (sectionInfo_[i_].Id == 7) // Export - name only
+            {
+                for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
+                {
+                    if ((((idx - importCount) == sectionSubInfo_[ii0].Index)) && (sectionSubInfo_[ii0]._FunctionTag == 0))
+                    {
+                        funcName = wasmDecompiler_.correctFunctionName(sectionSubInfo_[ii0]._FunctionName);
+                        customName = true;
+                    }
+                }
+            }*/
+
+            if (sectionInfo_[i_].Id == 3) // Function - type only
+            {
+                for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
+                {
+                    if ((idx - importCount) == sectionSubInfo_[ii0].Index)
+                    {
+                        funcType = sectionSubInfo_[ii0]._FunctionIdx;
+                    }
+                }
+            }
+        }
+    }
+
+    // Generate description, calc local variables
+    std::string funcReturn = "void";
+    std::string funcParam = "";
     if (funcType >= 0)
     {
-        std::string funcReturn = "void";
-        std::string funcParam = "";
-        for (int iii = 0; iii < sectionInfo_.size(); iii++)
+        for (int i_ = 0; i_ < sectionInfo_.size(); i_++)
         {
-            if (sectionInfo_[iii].Id == 1)
+            if (sectionInfo_[i_].Id == 1) // Type
             {
-                for (int iiii = sectionInfo_[iii].SubIdx1; iiii < sectionInfo_[iii].SubIdx2; iiii++)
+                for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
                 {
-                    if (sectionSubInfo_[iiii].Index == funcType)
+                    if (funcType == sectionSubInfo_[ii0].Index)
                     {
-                        if (localNum == -3)
-                        {
-                            return std::to_string(iiii);
-                        }
-                        if (sectionSubInfo_[iiii]._TypeReturn.size() > 0)
+                        if (sectionSubInfo_[ii0]._TypeReturn.size() > 0)
                         {
                             funcReturn = "";
                         }
-                        for (int iiiii = 0; iiiii < sectionSubInfo_[iiii]._TypeReturn.size(); iiiii++)
+                        for (int ii0i = 0; ii0i < sectionSubInfo_[ii0]._TypeReturn.size(); ii0i++)
                         {
-                            if (iiiii > 0)
+                            if (ii0i > 0)
                             {
                                 funcReturn = funcReturn + "_";
                             }
-                            funcReturn = funcReturn + wasmDecompiler_.valueTypeName(sectionSubInfo_[iiii]._TypeReturn[iiiii]);
+                            funcReturn = funcReturn + wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeReturn[ii0i]);
                         }
-                        if (sectionSubInfo_[iiii]._TypeParams.size() == 0)
+                        for (int ii0i = 0; ii0i < sectionSubInfo_[ii0]._TypeParams.size(); ii0i++)
                         {
-                            funcParam = "void";
-                        }
-                        for (int iiiii = 0; iiiii < sectionSubInfo_[iiii]._TypeParams.size(); iiiii++)
-                        {
-                            if (iiiii > 0)
+                            if (ii0i > 0)
                             {
                                 funcParam = funcParam + ", ";
                             }
-                            funcParam = funcParam + wasmDecompiler_.valueTypeName(sectionSubInfo_[iiii]._TypeParams[iiiii]) + " ";
+                            funcParam = funcParam + wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeParams[ii0i]) + " ";
                             if (wasmDecompiler_.decompOptVariableHungarian)
                             {
-                                funcParam = funcParam + wasmDecompiler_.valueTypeName(sectionSubInfo_[iiii]._TypeParams[iiiii]) + "_";
+                                funcParam = funcParam + wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeParams[ii0i]) + "_";
                             }
-                            funcParam = funcParam + "param" + std::to_string(localNum);
-                            /*if (funcName == "{~}")
-                            {
-                                funcParam = funcParam + " param" + std::to_string(localNum);
-                            }
-                            else
-                            {
-                                funcParam = funcParam + " local" + std::to_string(localNum);
-                            }*/
+                            funcParam = funcParam + wasmDecompiler_.metaTagGet2(102, idx, localNum, "param" + std::to_string(localNum));
                             localNum++;
                         }
                     }
                 }
             }
         }
-        if (localNum == -3)
-        {
-            return "-1";
-        }
-        if (funcName == "{~}") funcName = "template";
-        return funcReturn + " " + correctFunctionName(funcName) + "(" + funcParam + ")";
+        funcParam = "(" + funcParam + ")";
     }
     else
     {
-        if (localNum == -3)
-        {
-            return "-1";
-        }
-        return "void " + correctFunctionName(funcName) + "()";
+        funcReturn = "error";
+        funcParam = "(error)";
     }
-}
 
-std::string fileStructure::getFunctionName(int idx, int fidx, int &localNum)
-{
-    std::string funcName = "__function" + std::to_string(fidx);
-    int funcType = -1;
-    for (int iii = 0; iii < sectionInfo_.size(); iii++)
+
+    switch (mode)
     {
-        // Finding parameter and return types
-        if (sectionInfo_[iii].Id == 3)
-        {
-            for (int iiii = sectionInfo_[iii].SubIdx1; iiii < sectionInfo_[iii].SubIdx2; iiii++)
-            {
-                if (sectionSubInfo_[iiii].Index == idx)
-                {
-                    funcType = sectionSubInfo_[iiii]._FunctionIdx;
-                }
-            }
-        }
-
-        // Finding function name
-        if (sectionInfo_[iii].Id == 7)
-        {
-            for (int iiii = sectionInfo_[iii].SubIdx1; iiii < sectionInfo_[iii].SubIdx2; iiii++)
-            {
-                if (sectionSubInfo_[iiii]._FunctionTag == 0)
-                {
-                    if (sectionSubInfo_[iiii]._FunctionIdx == fidx)
-                    {
-                        funcName = sectionSubInfo_[iiii]._FunctionName;
-                    }
-                }
-            }
-        }
+        case getFunctionNameByIdMode::debug:
+            return funcReturn + " " + funcName + funcParam + " " + std::to_string(funcType) + " " + std::to_string(localNum);
+        case getFunctionNameByIdMode::funcCode:
+            return funcReturn + " " + funcName + funcParam;
+        case getFunctionNameByIdMode::funcNameString:
+            return funcName;
+        case getFunctionNameByIdMode::funcTypeNumber:
+            return std::to_string(funcType);
     }
 
-    if (localNum > 0) { localNum = 0; }
-    return getFunctionType(funcType, funcName, localNum);
-}
-
-std::string fileStructure::getFunctionNameById(int idx, int fidx, int localNum)
-{
-    // localNum == -1 Function name
-    // localNum == -2 Function type index
-    // localNum == -3 Function type element in sectionSubInfo_
-    for (int i_ = 0; i_ < sectionInfo_.size(); i_++)
-    {
-        if (sectionInfo_[i_].Id == 2)
-        {
-            for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
-            {
-                if (((idx < 0) || (idx == sectionSubInfo_[ii0].Index)) && ((fidx < 0) || (fidx == sectionSubInfo_[ii0]._FunctionIdx)) && (sectionSubInfo_[ii0]._FunctionTag == 0))
-                {
-                    return getFunctionType(sectionSubInfo_[ii0]._CodeSize, sectionSubInfo_[ii0]._FunctionName, localNum);
-                }
-            }
-        }
-        if (sectionInfo_[i_].Id == 10)
-        {
-            for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
-            {
-                if (((idx < 0) || (idx == sectionSubInfo_[ii0].Index)) && ((fidx < 0) || (fidx == sectionSubInfo_[ii0]._FunctionIdx)))
-                {
-                    return getFunctionName(sectionSubInfo_[ii0].Index, sectionSubInfo_[ii0]._FunctionIdx, localNum);
-                }
-            }
-        }
-    }
-    return "";
+    return "?";
 }
 
 
-std::string fileStructure::itemInfoText(sectionSubInfo &sectionSubInfo__)
+std::string fileStructure::itemInfoText(int sectionId, sectionSubInfo &sectionSubInfo__)
 {
-    return "Item " + std::to_string(sectionSubInfo__.Index) + ", " + hex::IntToHex32(sectionSubInfo__.ItemAddr) + "-" + hex::IntToHex32(sectionSubInfo__.ItemAddr + sectionSubInfo__.ItemSize - 1) + ": ";
+    std::string info1 = wasmDecompiler_.htmlPrefix(sectionId + 100, sectionSubInfo__.Index) + "Item " + std::to_string(sectionSubInfo__.Index);
+    std::string info2 = hex::IntToHex32(sectionSubInfo__.ItemAddr) + "-" + hex::IntToHex32(sectionSubInfo__.ItemAddr + sectionSubInfo__.ItemSize - 1) + wasmDecompiler_.htmlSuffix(sectionId + 100, sectionSubInfo__.Index);
+    return info1 + ", " + info2 + ": ";
 }
 
 std::string fileStructure::sizeText(int minVal, int maxVal)
@@ -694,540 +726,770 @@ std::string fileStructure::sizeText(int minVal, int maxVal)
     }
 }
 
-void fileStructure::printType(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
+void fileStructure::printCustom(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int itemIndex)
+{
+    int nameLength = (sectionInfo__.StartIdx / 100);
+    int nameNumSie = (sectionInfo__.StartIdx % 100);
+    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
+    {
+        if ((itemIndex < 0) || (itemIndex == sectionSubInfo_[ii].Index))
+        {
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlPrefix(0, sectionSubInfo_[ii].Index)); }
+            if (infoItem)
+            {
+                sb.append(itemInfoText(0, sectionSubInfo_[ii]));
+                sb.append("custom[").append(sectionSubInfo_[ii].Index).append("] \"");
+                int ptr = sectionInfo__.DataAddr + nameNumSie;
+                std::string nameStr = "";
+                for (int i = 0; i < nameLength; i++)
+                {
+                    if ((raw[ptr] >= 32) && (raw[ptr] <= 126))
+                    {
+                        nameStr.push_back(raw[ptr]);
+                    }
+                    else
+                    {
+                        nameStr.push_back('.');
+                    }
+                    ptr++;
+                }
+                sb.append(nameStr);
+                sb.append("\" - ").append(sectionSubInfo_[ii]._CodeSize).append(" bytes");
+                sb.eol();
+            }
+            if (infoItemRaw)
+            {
+                printRaw(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+            }
+            if (infoCode)
+            {
+                bool isName = false;
+                if (wasmDecompiler_.useTags && (nameLength == 4) && (nameNumSie == 1))
+                {
+                    int ptr = sectionInfo__.DataAddr + nameNumSie;
+                    if ((raw[ptr] == 'n') && (raw[ptr + 1] == 'a') && (raw[ptr + 2] == 'm') && (raw[ptr + 3] == 'e'))
+                    {
+                        isName = true;
+                    }
+                }
+                if (isName && wasmDecompiler_.metaTagValid)
+                {
+                    int metaIdx = 0;
+                    std::string metaItem = wasmDecompiler_.metaTagGetInfo(metaIdx);
+                    while (metaItem != "`")
+                    {
+                        if (metaItem.size() > 1)
+                        {
+                            sb.append(metaItem).eol();
+                        }
+                        metaIdx++;
+                        metaItem = wasmDecompiler_.metaTagGetInfo(metaIdx);
+                    }
+                }
+                else
+                {
+                    printRaw(sb, sectionSubInfo_[ii]._CodeAddr, sectionSubInfo_[ii]._CodeSize);
+                }
+            }
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlSuffix(0, sectionSubInfo_[ii].Index)); }
+        }
+    }
+
+}
+
+void fileStructure::printType(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int itemIndex)
 {
     for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
     {
-        if (infoItem)
+        if ((itemIndex < 0) || (itemIndex == sectionSubInfo_[ii].Index))
         {
-            ss << itemInfoText(sectionSubInfo_[ii]);
-            ss << "type[" << sectionSubInfo_[ii].Index << "]";
-            ss << "  return = {";
-            for (int iii = 0; iii < sectionSubInfo_[ii]._TypeReturn.size(); iii++)
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlPrefix(1, sectionSubInfo_[ii].Index)); }
+            if (infoItem)
             {
-                if (iii > 0) ss << ", ";
-                ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[iii]);
-            }
-            ss << "}  param = {";
-            for (int iii = 0; iii < sectionSubInfo_[ii]._TypeParams.size(); iii++)
-            {
-                if (iii > 0) ss << ", ";
-                ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeParams[iii]);
-            }
-            ss << "};";
-            ss << std::endl;
-        }
-        if (infoItemRaw)
-        {
-            printRaw(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-        }
-        if (infoCode)
-        {
-            printCodeText(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-            ss << codeInstrInfoBlank();
-
-            for (int iii = 0; iii < sectionSubInfo_[ii]._TypeReturn.size(); iii++)
-            {
-                if (iii > 0)
+                sb.append(itemInfoText(1, sectionSubInfo_[ii]));
+                sb.append("type[").append(sectionSubInfo_[ii].Index).append("]");
+                sb.append(wasmDecompiler_.metaTagGetTempl(204, sectionSubInfo_[ii].Index, " ", ""));
+                sb.append("  return = {");
+                for (int iii = 0; iii < sectionSubInfo_[ii]._TypeReturn.size(); iii++)
                 {
-                    ss << "_";
+                    if (iii > 0) sb.append(", ");
+                    sb.append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[iii]));
                 }
-                ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[iii]);
-            }
-            if (sectionSubInfo_[ii]._TypeReturn.size() == 0) ss << "void";
-            ss << " template(";
-            if (sectionSubInfo_[ii]._TypeParams.size() > 0)
-            {
+                sb.append("}  param = {");
                 for (int iii = 0; iii < sectionSubInfo_[ii]._TypeParams.size(); iii++)
+                {
+                    if (iii > 0) sb.append(", ");
+                    sb.append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeParams[iii]));
+                }
+                sb.append("};");
+                sb.eol();
+            }
+            if (infoCode)
+            {
+                printCodeText(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+                sb.append(codeInstrInfoBlank());
+
+                for (int iii = 0; iii < sectionSubInfo_[ii]._TypeReturn.size(); iii++)
                 {
                     if (iii > 0)
                     {
-                        ss << ", ";
+                        sb.append("_");
                     }
-                    ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeParams[iii]);
-                    ss << " ";
-                    if (wasmDecompiler_.decompOptVariableHungarian)
-                    {
-                        ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeParams[iii]) << "_";
-                    }
-                    ss << "param" << iii;
+                    sb.append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[iii]));
                 }
+                if (sectionSubInfo_[ii]._TypeReturn.size() == 0) sb.append("void");
+                sb.append(" template(");
+                if (sectionSubInfo_[ii]._TypeParams.size() > 0)
+                {
+                    for (int iii = 0; iii < sectionSubInfo_[ii]._TypeParams.size(); iii++)
+                    {
+                        if (iii > 0)
+                        {
+                            sb.append(", ");
+                        }
+                        sb.append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeParams[iii]));
+                        sb.append(" ");
+                        if (wasmDecompiler_.decompOptVariableHungarian)
+                        {
+                            sb.append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeParams[iii])).append("_");
+                        }
+                        sb.append("param").append(iii);
+                    }
+                }
+                else
+                {
+                    sb.append("void");
+                }
+                sb.append(");").eol();
             }
-            else
+            if (infoItemRaw)
             {
-                ss << "void";
+                printRaw(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
             }
-            ss << ");" << std::endl;
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlSuffix(1, sectionSubInfo_[ii].Index)); }
         }
     }
 }
 
-void fileStructure::printImport(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
+void fileStructure::printImport(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int itemIndex)
 {
     for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
     {
-        if (infoItem)
+        if ((itemIndex < 0) || (itemIndex == sectionSubInfo_[ii].Index))
         {
-            ss << itemInfoText(sectionSubInfo_[ii]);
-            switch (sectionSubInfo_[ii]._FunctionTag)
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlPrefix(2, sectionSubInfo_[ii].Index)); }
+            if (infoItem)
             {
-                case 0: ss << "function"; break;
-                case 1: ss << "table"; break;
-                case 2: ss << "memory"; break;
-                case 3: ss << "global"; break;
-                default:ss << "unknown"; break;
-            }
+                sb.append(itemInfoText(2, sectionSubInfo_[ii]));
+                switch (sectionSubInfo_[ii]._FunctionTag)
+                {
+                    case 0: sb.append("function"); break;
+                    case 1: sb.append("table"); break;
+                    case 2: sb.append("memory"); break;
+                    case 3: sb.append("global"); break;
+                    default:sb.append("unknown"); break;
+                }
 
-            ss << "[" << sectionSubInfo_[ii]._FunctionIdx << "] \"" << sectionSubInfo_[ii]._FunctionName + "\"";
-            if (sectionSubInfo_[ii]._FunctionTag == 1)
-            {
-                ss << " " << sizeText(sectionSubInfo_[ii]._TypeReturn[1], sectionSubInfo_[ii]._TypeReturn[2]);
-                ss << " " << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0]);
+                sb.append("[").append(sectionSubInfo_[ii]._FunctionIdx).append("] \"").append(sectionSubInfo_[ii]._FunctionName).append("\"");
+                if (sectionSubInfo_[ii]._FunctionTag == 0)
+                {
+                    sb.append(" - type[").append(sectionSubInfo_[ii]._CodeSize).append("]");
+                    sb.append(wasmDecompiler_.metaTagGetTempl(204, sectionSubInfo_[ii]._CodeSize, " ", ""));
+                }
+                if (sectionSubInfo_[ii]._FunctionTag == 1)
+                {
+                    sb.append(" ").append(sizeText(sectionSubInfo_[ii]._TypeReturn[1], sectionSubInfo_[ii]._TypeReturn[2]));
+                    sb.append(" ").append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0]));
+                }
+                if (sectionSubInfo_[ii]._FunctionTag == 2)
+                {
+                    sb.append(" ").append(sizeText(sectionSubInfo_[ii]._TypeReturn[0], sectionSubInfo_[ii]._TypeReturn[1]));
+                }
+                sb.eol();
             }
-            if (sectionSubInfo_[ii]._FunctionTag == 2)
+            if (infoCode)
             {
-                ss << " " << sizeText(sectionSubInfo_[ii]._TypeReturn[0], sectionSubInfo_[ii]._TypeReturn[1]);
+                if (sectionSubInfo_[ii]._FunctionTag == 0)
+                {
+                    printCodeText(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+                    sb.append(codeInstrInfoBlank());
+                    sb.append(getFunctionNameById(getFunctionNameByIdMode::funcCode, getFunctionNameByIdNumber::whole, sectionSubInfo_[ii].Index)).append(";");
+                    sb.eol();
+                }
+                if (sectionSubInfo_[ii]._FunctionTag == 3)
+                {
+                    printCodeText(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+                    sb.append(codeInstrInfoBlank());
+                    if (sectionSubInfo_[ii]._TypeReturn[1] == 0)
+                    {
+                        sb.append("const ");
+                    }
+                    sb.append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0])).append(" ").append(getGlobalVarName(sectionSubInfo_[ii]._FunctionIdx, true, sectionSubInfo_[ii]._TypeReturn[0], false)).append(";");
+                    sb.eol();
+                }
             }
-            ss << std::endl;
+            if (infoItemRaw)
+            {
+                printRaw(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+            }
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlSuffix(2, sectionSubInfo_[ii].Index)); }
         }
-        if (infoItemRaw)
+    }
+}
+
+void fileStructure::printFunction(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int itemIndex)
+{
+    int importOffset = atoi(getFunctionNameById(getFunctionNameByIdMode::funcNameString, getFunctionNameByIdNumber::import, -1).c_str());
+    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
+    {
+        if ((itemIndex < 0) || (itemIndex == sectionSubInfo_[ii].Index))
         {
-            printRaw(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-        }
-        if (infoCode)
-        {
-            if (sectionSubInfo_[ii]._FunctionTag == 0)
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlPrefix(3, sectionSubInfo_[ii].Index)); }
+            if (infoItem)
             {
-                printCodeText(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-                ss << codeInstrInfoBlank();
-                ss << getFunctionNameById(-1, sectionSubInfo_[ii]._FunctionIdx, 0) << ";";
-                ss << std::endl;
+                sb.append(itemInfoText(3, sectionSubInfo_[ii]));
+                sb.append("function[").append((sectionSubInfo_[ii].Index + importOffset)).append("]");
+                sb.append(wasmDecompiler_.metaTagGetTempl(201, sectionSubInfo_[ii].Index + importOffset, " ", ""));
+                sb.append(" - type[").append(sectionSubInfo_[ii]._FunctionIdx).append("]");
+                sb.append(wasmDecompiler_.metaTagGetTempl(204, sectionSubInfo_[ii].Index + importOffset, " ", ""));
+                sb.eol();
             }
-            if (sectionSubInfo_[ii]._FunctionTag == 3)
+            if (infoCode)
             {
-                printCodeText(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-                ss << codeInstrInfoBlank();
+                printCodeText(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+                sb.append(codeInstrInfoBlank());
+                sb.append(getFunctionNameById(getFunctionNameByIdMode::funcCode, getFunctionNameByIdNumber::whole, sectionSubInfo_[ii].Index + importOffset)).append(";");
+                sb.eol();
+            }
+            if (infoItemRaw)
+            {
+                printRaw(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+            }
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlSuffix(3, sectionSubInfo_[ii].Index)); }
+        }
+    }
+}
+
+void fileStructure::printTable(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int itemIndex)
+{
+    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
+    {
+        if ((itemIndex < 0) || (itemIndex == sectionSubInfo_[ii].Index))
+        {
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlPrefix(4, sectionSubInfo_[ii].Index)); }
+            if (infoItem)
+            {
+                sb.append(itemInfoText(4, sectionSubInfo_[ii]));
+                sb.append("table[").append(sectionSubInfo_[ii]._FunctionIdx).append("]");
+                sb.append(wasmDecompiler_.metaTagGetTempl(205, sectionSubInfo_[ii].Index, " ", ""));
+                sb.append(" ").append(sizeText(sectionSubInfo_[ii]._CodeLocalSize[0], sectionSubInfo_[ii]._CodeLocalSize[1]));
+                sb.append(" ").append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0]));
+                sb.eol();
+            }
+            if (infoCode)
+            {
+            }
+            if (infoItemRaw)
+            {
+                printRaw(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+            }
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlSuffix(4, sectionSubInfo_[ii].Index)); }
+        }
+    }
+}
+
+void fileStructure::printMemory(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int itemIndex)
+{
+    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
+    {
+        if ((itemIndex < 0) || (itemIndex == sectionSubInfo_[ii].Index))
+        {
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlPrefix(5, sectionSubInfo_[ii].Index)); }
+            if (infoItem)
+            {
+                sb.append(itemInfoText(5, sectionSubInfo_[ii]));
+                sb.append("memory[").append(sectionSubInfo_[ii].Index).append("]");
+                sb.append(wasmDecompiler_.metaTagGetTempl(206, sectionSubInfo_[ii].Index, " ", ""));
+                sb.append(" ").append(sizeText(sectionSubInfo_[ii]._CodeLocalSize[0], sectionSubInfo_[ii]._CodeLocalSize[1]));
+                sb.eol();
+            }
+            if (infoCode)
+            {
+            }
+            if (infoItemRaw)
+            {
+                printRaw(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+            }
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlSuffix(5, sectionSubInfo_[ii].Index)); }
+        }
+    }
+}
+
+void fileStructure::printGlobal(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch, int itemIndex)
+{
+    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
+    {
+        if ((itemIndex < 0) || (itemIndex == sectionSubInfo_[ii].Index))
+        {
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlPrefix(6, sectionSubInfo_[ii].Index)); }
+            if (infoItem)
+            {
+                sb.append(itemInfoText(6, sectionSubInfo_[ii]));
+                sb.append("global[").append(sectionSubInfo_[ii]._FunctionIdx).append("]");
+                sb.append(wasmDecompiler_.metaTagGetTempl(207, sectionSubInfo_[ii].Index, " ", ""));
+                if (!sectionSubInfo_[ii]._CodeGood)
+                {
+                    sb.append(" !!! CODE PARSE ERROR !!!");
+                }
+                sb.eol();
+            }
+            if (infoCode)
+            {
+                printCodeText(sb, sectionSubInfo_[ii].Addr, 2);
+                sb.append(codeInstrInfoBlank());
+                std::string header = wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0]) + " " + getGlobalVarName(sectionSubInfo_[ii]._FunctionIdx, true, sectionSubInfo_[ii]._TypeReturn[0], false);
                 if (sectionSubInfo_[ii]._TypeReturn[1] == 0)
                 {
-                    ss << "const ";
+                    header = "const " + header;
                 }
-                ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0]) << " " << getGlobalVarName(sectionSubInfo_[ii]._FunctionIdx, true, sectionSubInfo_[ii]._TypeReturn[0]) << ";";
-                ss << std::endl;
-            }
-        }
-    }
-}
 
-void fileStructure::printFunction(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
-{
-    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
-    {
-        if (infoItem)
-        {
-            ss << itemInfoText(sectionSubInfo_[ii]) << sectionSubInfo_[ii]._FunctionIdx;
-            ss << std::endl;
-        }
-        if (infoItemRaw)
-        {
-            printRaw(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-        }
-        if (infoCode)
-        {
-            printCodeText(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-            ss << codeInstrInfoBlank();
-            ss << getFunctionNameById(sectionSubInfo_[ii].Index, -1, 0) << ";";
-            ss << std::endl;
-        }
-    }
-}
-
-void fileStructure::printTable(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
-{
-    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
-    {
-        if (infoItem)
-        {
-            ss << itemInfoText(sectionSubInfo_[ii]);
-            ss << "table[" << sectionSubInfo_[ii]._FunctionIdx << "]";
-            ss << " " << sizeText(sectionSubInfo_[ii]._CodeLocalSize[0], sectionSubInfo_[ii]._CodeLocalSize[1]);
-            ss << " " << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0]);
-            ss << std::endl;
-        }
-        if (infoItemRaw)
-        {
-            printRaw(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-        }
-    }
-}
-
-void fileStructure::printMemory(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
-{
-    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
-    {
-        if (infoItem)
-        {
-            ss << itemInfoText(sectionSubInfo_[ii]);
-            ss << "memory[" << sectionSubInfo_[ii].Index << "]";
-            ss << " " << sizeText(sectionSubInfo_[ii]._CodeLocalSize[0], sectionSubInfo_[ii]._CodeLocalSize[1]);
-            ss << std::endl;
-        }
-        if (infoItemRaw)
-        {
-            printRaw(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-        }
-    }
-}
-
-void fileStructure::printGlobal(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch)
-{
-    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
-    {
-        if (infoItem)
-        {
-            ss << itemInfoText(sectionSubInfo_[ii]);
-            ss << "global[" << sectionSubInfo_[ii]._FunctionIdx << "]";
-            if (!sectionSubInfo_[ii]._CodeGood)
-            {
-                ss << " !!! CODE PARSE ERROR !!!";
-            }
-            ss << std::endl;
-        }
-        if (infoItemRaw)
-        {
-            printRaw(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-        }
-        if (infoCode)
-        {
-            printCodeText(ss, sectionSubInfo_[ii].Addr, 2);
-            ss << codeInstrInfoBlank();
-            if (sectionSubInfo_[ii]._TypeReturn[1] == 0)
-            {
-                ss << "const ";
-            }
-            ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0]) << " " << getGlobalVarName(sectionSubInfo_[ii]._FunctionIdx, true, sectionSubInfo_[ii]._TypeReturn[0]) << ";";
-            ss << std::endl;
-
-            if (decompType & 1)
-            {
-                printCodeText(ss, -1, 0);
-                ss << codeInstrInfoBlank();
-                ss << "{";
-                ss << std::endl;
-            }
-
-            wasmDecompiler_.reset("", decompBranch, sectionSubInfo_[ii]._CodeDataFieldDictionary);
-            wasmDecompiler_.dataFieldDictionarySet("", sectionSubInfo_[ii]._TypeReturn[0], "return", 0);
-            printCodeInstr(ss, sectionSubInfo_[ii]._CodeInstr, ii, decompType);
-        }
-    }
-}
-
-void fileStructure::printExport(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
-{
-    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
-    {
-        if (infoItem)
-        {
-            ss << itemInfoText(sectionSubInfo_[ii]);
-            switch (sectionSubInfo_[ii]._FunctionTag)
-            {
-                case 0: ss << "function"; break;
-                case 1: ss << "table"; break;
-                case 2: ss << "memory"; break;
-                case 3: ss << "global"; break;
-                default:ss << "unknown"; break;
-            }
-
-            ss << "[" << sectionSubInfo_[ii]._FunctionIdx << "] \"" << sectionSubInfo_[ii]._FunctionName << "\"";
-            ss << std::endl;
-        }
-        if (infoItemRaw)
-        {
-            printRaw(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-        }
-        if (infoCode)
-        {
-            if (sectionSubInfo_[ii]._FunctionTag == 0)
-            {
-                printCodeText(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-                ss << codeInstrInfoBlank();
-                ss << getFunctionNameById(-1, sectionSubInfo_[ii]._FunctionIdx, 0) << ";";
-                ss << std::endl;
-            }
-            if (sectionSubInfo_[ii]._FunctionTag == 3)
-            {
-                printCodeText(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-                ss << codeInstrInfoBlank();
-                ss << wasmDecompiler_.valueTypeName(getVarTypeG(sectionSubInfo_[ii]._FunctionIdx)) << " " << getGlobalVarName(sectionSubInfo_[ii]._FunctionIdx, true, getVarTypeG(sectionSubInfo_[ii]._FunctionIdx)) << ";";
-                ss << std::endl;
-            }
-        }
-    }
-}
-
-void fileStructure::printStart(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
-{
-    ss << "Entry point: function[" << sectionInfo__.StartIdx << "]";
-    ss << " - " << getFunctionNameById(-1, sectionInfo__.StartIdx, 0) << std::endl;
-}
-
-void fileStructure::printElement(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
-{
-
-}
-
-void fileStructure::printCode(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch)
-{
-    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
-    {
-        if (infoItem)
-        {
-            ss << itemInfoText(sectionSubInfo_[ii]);
-            ss << "function[" << sectionSubInfo_[ii]._FunctionIdx << "]";
-            if (!sectionSubInfo_[ii]._CodeGood)
-            {
-                ss << " !!! CODE PARSE ERROR !!!";
-            }
-            //ss << " Offset:" << hex::IntToHex32(sectionSubInfo_[ii]._CodeAddr);
-            //ss << " Size:" << hex::IntToHex32(sectionSubInfo_[ii]._CodeSize) << "=" << sectionSubInfo_[ii]._CodeSize;
-            ss << std::endl;
-        }
-        if (infoItemRaw)
-        {
-            printRaw(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-        }
-        if (infoCode)
-        {
-            int localNum = -1;
-            wasmDecompiler_.reset(getFunctionName(sectionSubInfo_[ii].Index, sectionSubInfo_[ii]._FunctionIdx, localNum), decompBranch, sectionSubInfo_[ii]._CodeDataFieldDictionary);
-            if ((decompType & 1) || (decompType == 0))
-            {
-                printCodeText(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii]._CodeAddr_ - sectionSubInfo_[ii].ItemAddr);
-            }
-
-            {
-                int iii = 0;
-                while (getVarTypeG(iii) != 0)
-                {
-                    wasmDecompiler_.dataFieldDictionarySet(getGlobalVarName(iii, false, 0), getVarTypeG(iii), "global", iii);
-                    iii++;
-                }
-                iii = 0;
-                while (getVarTypeL(iii, 0 - ii) != 0)
-                {
-                    wasmDecompiler_.dataFieldDictionarySet("", getVarTypeL(iii, 0 - ii), "return", iii);
-                    iii++;
-                }
-            }
-
-            localNum = 0;
-            if ((decompType & 1) || (decompType == 0))
-            {
-                ss << codeInstrInfoBlank();
-                ss << getFunctionName(sectionSubInfo_[ii].Index, sectionSubInfo_[ii]._FunctionIdx, localNum);
-                if (decompType == 0)
-                {
-                    ss << ";";
-                }
-                ss << std::endl;
-            }
-            else
-            {
-                // Necessary for get correct localNum value
-                getFunctionName(sectionSubInfo_[ii].Index, sectionSubInfo_[ii]._FunctionIdx, localNum);
-            }
-
-            for (int iii = 0; iii < localNum; iii++)
-            {
-                wasmDecompiler_.dataFieldDictionarySet("", getVarTypeL(iii, ii), "param", iii);
-            }
-
-            if (decompType & 1)
-            {
-                printCodeText(ss, -1, 0);
-                ss << codeInstrInfoBlank();
-                ss << "{";
-                ss << std::endl;
-            }
-
-
-            for (int iii = 0; iii < sectionSubInfo_[ii]._CodeLocalN.size(); iii++)
-            {
                 if (decompType & 1)
                 {
-                    printCodeText(ss, sectionSubInfo_[ii]._CodeLocalAddr[iii], sectionSubInfo_[ii]._CodeLocalSize[iii]);
-                    ss << codeInstrInfoBlank();
-                    ss << hex::indent(1) << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._CodeLocalType[iii]);
+                    sb.append(wasmDecompiler_.htmlPrefix(306, sectionSubInfo_[ii].Index)).append(header).append(wasmDecompiler_.htmlSuffix(306, sectionSubInfo_[ii].Index)).eol();
+                    printCodeText(sb, -1, 0);
+                    sb.append(codeInstrInfoBlank());
+                    sb.append("{");
+                    sb.eol();
                 }
-                for (int iiii = 0; iiii < sectionSubInfo_[ii]._CodeLocalN[iii]; iiii++)
+                else
                 {
-                    std::string localVarId = wasmDecompiler_.dataFieldDictionarySet("", getVarTypeL(localNum, ii), "local", localNum);
-                    if (decompType & 1)
-                    {
-                        if (iiii > 0)
-                        {
-                            ss << ",";
-                        }
-                        ss << " " << wasmDecompiler_.dataFieldDictionaryDisplay(localVarId);
-                    }
-                    localNum++;
+                    sb.append(wasmDecompiler_.htmlPrefix(306, sectionSubInfo_[ii].Index)).append(header).append(";").append(wasmDecompiler_.htmlSuffix(306, sectionSubInfo_[ii].Index)).eol();
                 }
-                if (decompType & 1)
-                {
-                    ss << ";" << std::endl;
-                }
+
+                wasmDecompiler_.reset("*" + wasmDecompiler_.htmlPrefix(406, sectionSubInfo_[ii].Index) + header + ((decompType & 2) ? "" : ";") + wasmDecompiler_.htmlSuffix(406, sectionSubInfo_[ii].Index), decompBranch, sectionSubInfo_[ii]._CodeDataFieldDictionary);
+                wasmDecompiler_.dataFieldDictionarySet("", sectionSubInfo_[ii]._TypeReturn[0], "return", 0);
+                printCodeInstr(sb, sectionSubInfo_[ii]._CodeInstr, ii, decompType);
             }
-            printCodeInstr(ss, sectionSubInfo_[ii]._CodeInstr, ii, decompType);
+            if (infoItemRaw)
+            {
+                printRaw(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+            }
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlSuffix(6, sectionSubInfo_[ii].Index)); }
         }
     }
 }
 
-void fileStructure::printData(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch)
+void fileStructure::printExport(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int itemIndex)
 {
     for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
     {
-        if (infoItem)
+        if ((itemIndex < 0) || (itemIndex == sectionSubInfo_[ii].Index))
         {
-            ss << itemInfoText(sectionSubInfo_[ii]);
-            ss << "data[" << sectionSubInfo_[ii].Index << "] - " << sectionSubInfo_[ii]._CodeSize << " bytes";
-            if (!sectionSubInfo_[ii]._CodeGood)
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlPrefix(7, sectionSubInfo_[ii].Index)); }
+            if (infoItem)
             {
-                ss << " !!! CODE PARSE ERROR !!!";
+                sb.append(itemInfoText(7, sectionSubInfo_[ii]));
+                switch (sectionSubInfo_[ii]._FunctionTag)
+                {
+                    case 0: sb.append("function"); break;
+                    case 1: sb.append("table"); break;
+                    case 2: sb.append("memory"); break;
+                    case 3: sb.append("global"); break;
+                    default:sb.append("unknown"); break;
+                }
+
+                sb.append("[").append(sectionSubInfo_[ii]._FunctionIdx).append("] \"").append(sectionSubInfo_[ii]._FunctionName).append("\"");
+                sb.eol();
             }
-            ss << std::endl;
-        }
-        if (infoItemRaw)
-        {
-            printRaw(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-        }
-        if (infoCode)
-        {
-            if (decompType & 1)
+            if (infoCode)
             {
-                printCodeText(ss, sectionSubInfo_[ii].Addr, 1);
+                if (sectionSubInfo_[ii]._FunctionTag == 0)
+                {
+                    printCodeText(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+                    sb.append(codeInstrInfoBlank());
+                    sb.append(getFunctionNameById(getFunctionNameByIdMode::funcCode, getFunctionNameByIdNumber::internal, sectionSubInfo_[ii].Index)).append(";");
+                    sb.eol();
+                }
+                if (sectionSubInfo_[ii]._FunctionTag == 3)
+                {
+                    printCodeText(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+                    sb.append(codeInstrInfoBlank());
+                    sb.append(wasmDecompiler_.valueTypeName(getVarTypeG(sectionSubInfo_[ii]._FunctionIdx))).append(" ").append(getGlobalVarName(sectionSubInfo_[ii]._FunctionIdx, true, getVarTypeG(sectionSubInfo_[ii]._FunctionIdx), false)).append(";");
+                    sb.eol();
+                }
+            }
+            if (infoItemRaw)
+            {
+                printRaw(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+            }
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlSuffix(7, sectionSubInfo_[ii].Index)); }
+        }
+    }
+}
+
+void fileStructure::printStart(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
+{
+    sb.append("Entry point: function[").append(sectionInfo__.StartIdx).append("]");
+    sb.append(" - ").append(getFunctionNameById(getFunctionNameByIdMode::funcCode, getFunctionNameByIdNumber::whole, sectionInfo__.StartIdx)).eol();
+}
+
+void fileStructure::printElement(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch, int itemIndex)
+{
+    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
+    {
+        if ((itemIndex < 0) || (itemIndex == sectionSubInfo_[ii].Index))
+        {
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlPrefix(9, sectionSubInfo_[ii].Index)); }
+
+            int itemCount = (sectionSubInfo_[ii]._TypeParams.size() - 2) / 2;
+
+            if (infoItem)
+            {
+                sb.append(itemInfoText(9, sectionSubInfo_[ii]));
+                sb.append("elem[").append(sectionSubInfo_[ii].Index).append("] ");
+                sb.append(wasmDecompiler_.metaTagGetTempl(208, sectionSubInfo_[ii].Index, "", " "));
+                switch (sectionSubInfo_[ii]._FunctionTag)
+                {
+                    case 0:
+                        sb.append("active");
+                        break;
+                    case 1:
+                        sb.append("active with table[").append(sectionSubInfo_[ii]._TypeParams[0]).append("]");
+                        break;
+                    case 2:
+                        sb.append("passive");
+                        break;
+                    case 3:
+                        sb.append("declare");
+                        break;
+                }
+                switch (itemCount)
+                {
+                    case 0:
+                        sb.append(", no items");
+                        break;
+                    case 1:
+                        sb.append(", 1 item");
+                        break;
+                    case 2:
+                        sb.append(", ").append(itemCount).append(" items");
+                        break;
+                }
+                sb.eol();
+            }
+            if (infoCode)
+            {
+                std::string header = wasmDecompiler_.valueTypeName(wasmDecompiler_.fieldType_i32) + " elem" + std::to_string( sectionSubInfo_[ii].Index) + "_offset";
                 if (sectionSubInfo_[ii]._CodeInstr.size() > 0)
                 {
-                    ss << codeInstrInfoBlank();
-                    ss << "{";
-                }
-                ss << std::endl;
-            }
+                    printCodeText(sb, sectionSubInfo_[ii].Addr, 1);
+                    sb.append(codeInstrInfoBlank());
 
-            wasmDecompiler_.reset("", decompBranch, sectionSubInfo_[ii]._CodeDataFieldDictionary);
-            wasmDecompiler_.dataFieldDictionarySet("", 0, "return", 0);
-            printCodeInstr(ss, sectionSubInfo_[ii]._CodeInstr, ii, decompType);
-            printRaw(ss, sectionSubInfo_[ii]._CodeAddr, sectionSubInfo_[ii]._CodeSize);
+                    if (decompType & 1)
+                    {
+                        sb.append(wasmDecompiler_.htmlPrefix(309, sectionSubInfo_[ii].Index)).append(header).append(wasmDecompiler_.htmlSuffix(309, sectionSubInfo_[ii].Index)).eol();
+                        printCodeText(sb, -1, 1);
+                        sb.append(codeInstrInfoBlank());
+                        sb.append("{");
+                    }
+                    else
+                    {
+                        sb.append(wasmDecompiler_.htmlPrefix(309, sectionSubInfo_[ii].Index)).append(header).append(";").append(wasmDecompiler_.htmlSuffix(309, sectionSubInfo_[ii].Index));
+                    }
+                    sb.eol();
+                }
+
+                wasmDecompiler_.reset("*" + wasmDecompiler_.htmlPrefix(409, sectionSubInfo_[ii].Index) + header + (((decompType & 2) ? "" : ";")) + wasmDecompiler_.htmlSuffix(409, sectionSubInfo_[ii].Index), decompBranch, sectionSubInfo_[ii]._CodeDataFieldDictionary);
+                wasmDecompiler_.dataFieldDictionarySet("", 0, "return", 0);
+                printCodeInstr(sb, sectionSubInfo_[ii]._CodeInstr, ii, decompType);
+
+                for (int iii = 0; iii < itemCount; iii++)
+                {
+                    int printAddr = sectionSubInfo_[ii]._TypeParams[iii * 2 + 1];
+                    int printIdx = sectionSubInfo_[ii]._TypeParams[iii * 2 + 2];
+                    int printSize = sectionSubInfo_[ii]._TypeParams[iii * 2 + 3] - printAddr;
+                    printCodeText(sb, printAddr, printSize);
+                    sb.append(codeInstrInfoBlank());
+                    sb.append(getFunctionNameById(getFunctionNameByIdMode::funcCode, getFunctionNameByIdNumber::whole, printIdx)).append(";");
+                    sb.eol();
+                }
+            }
+            if (infoItemRaw)
+            {
+                printRaw(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+            }
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlSuffix(9, sectionSubInfo_[ii].Index)); }
         }
     }
 }
 
-void fileStructure::printDataCount(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
-{
-    ss << "Data count: " << sectionInfo__.StartIdx << std::endl;
-}
-
-void fileStructure::printTag(std::stringstream &ss, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
+void fileStructure::printCode(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch, int itemIndex)
 {
     for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
     {
-        if (infoItem)
+        if ((itemIndex < 0) || (itemIndex == sectionSubInfo_[ii].Index))
         {
-            ss << itemInfoText(sectionSubInfo_[ii]);
-            ss << "tag[" << sectionSubInfo_[ii].Index << "]  ";
-            ss << sectionSubInfo_[ii]._TypeReturn[0] << "  " << sectionSubInfo_[ii]._TypeReturn[1];
-            for (int i_ = 0; i_ < sectionInfo_.size(); i_++)
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlPrefix(10, sectionSubInfo_[ii].Index)); }
+            if (infoItem)
             {
-                if (sectionInfo_[i_].Id == 1)
+                sb.append(itemInfoText(10, sectionSubInfo_[ii]));
+                sb.append("function[").append(sectionSubInfo_[ii]._FunctionIdx).append("]");
+                sb.append(wasmDecompiler_.metaTagGetTempl(201, sectionSubInfo_[ii]._FunctionIdx, " ", ""));
+                if (!sectionSubInfo_[ii]._CodeGood)
                 {
-                    for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
+                    sb.append(" !!! CODE PARSE ERROR !!!");
+                }
+                sb.eol();
+            }
+            if (infoCode)
+            {
+                wasmDecompiler_.metaTagFunctionNumber = sectionSubInfo_[ii]._FunctionIdx;
+                wasmDecompiler_.reset(((decompType & 2) ? "+" : "-") + wasmDecompiler_.htmlPrefix(410, sectionSubInfo_[ii].Index) + "|" + wasmDecompiler_.htmlSuffix(410, sectionSubInfo_[ii].Index) + "|" + getFunctionNameById(getFunctionNameByIdMode::funcNameString, getFunctionNameByIdNumber::whole, sectionSubInfo_[ii]._FunctionIdx) + "|", decompBranch, sectionSubInfo_[ii]._CodeDataFieldDictionary);
+                {
+                    int iii = 0;
+                    while (getVarTypeG(iii) != 0)
                     {
-                        if (sectionSubInfo_[ii0].Index == sectionSubInfo_[ii]._TypeReturn[1])
-                        {
-                            ss << "  return = {";
-                            for (int iii = 0; iii < sectionSubInfo_[ii0]._TypeReturn.size(); iii++)
-                            {
-                                if (iii > 0) ss << ", ";
-                                ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeReturn[iii]);
-                            }
-                            ss << "}  param = {";
-                            for (int iii = 0; iii < sectionSubInfo_[ii0]._TypeParams.size(); iii++)
-                            {
-                                if (iii > 0) ss << ", ";
-                                ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeParams[iii]);
-                            }
-                            ss << "};";
+                        wasmDecompiler_.dataFieldDictionarySet(getGlobalVarName(iii, false, 0, false), getVarTypeG(iii), "global", iii);
+                        iii++;
+                    }
+                    iii = 0;
+                    while (getVarTypeL(iii, 0 - ii) != 0)
+                    {
+                        wasmDecompiler_.dataFieldDictionarySet("", getVarTypeL(iii, 0 - ii), "return", iii);
+                        iii++;
+                    }
+                }
 
+                int localNum = 0;
+                printCodeText(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii]._CodeAddr_ - sectionSubInfo_[ii].ItemAddr);
+                sb.append(codeInstrInfoBlank());
+                sb.append(wasmDecompiler_.htmlPrefix(310, sectionSubInfo_[ii].Index));
+                sb.append(getFunctionNameByIdLocalNum(getFunctionNameByIdMode::funcCode, getFunctionNameByIdNumber::whole, sectionSubInfo_[ii]._FunctionIdx, localNum));
+                if ((decompType == 0) || (decompType == 2))
+                {
+                    sb.append(";");
+                }
+                sb.append(wasmDecompiler_.htmlSuffix(310, sectionSubInfo_[ii].Index));
+                sb.eol();
+
+                for (int iii = 0; iii < localNum; iii++)
+                {
+                    wasmDecompiler_.dataFieldDictionarySet("", getVarTypeL(iii, ii), "param", iii);
+                }
+
+                if (decompType & 1)
+                {
+                    printCodeText(sb, -1, 0);
+                    sb.append(codeInstrInfoBlank());
+                    sb.append("{");
+                    sb.eol();
+                }
+
+
+                for (int iii = 0; iii < sectionSubInfo_[ii]._CodeLocalN.size(); iii++)
+                {
+                    if (decompType & 1)
+                    {
+                        printCodeText(sb, sectionSubInfo_[ii]._CodeLocalAddr[iii], sectionSubInfo_[ii]._CodeLocalSize[iii]);
+                        sb.append(codeInstrInfoBlank());
+                        sb.append(hex::indent(1)).append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._CodeLocalType[iii]));
+                    }
+                    for (int iiii = 0; iiii < sectionSubInfo_[ii]._CodeLocalN[iii]; iiii++)
+                    {
+                        std::string localVarId = wasmDecompiler_.dataFieldDictionarySet("", getVarTypeL(localNum, ii), "local", localNum);
+                        if (decompType & 1)
+                        {
+                            if (iiii > 0)
+                            {
+                                sb.append(",");
+                            }
+                            sb.append(" ").append(wasmDecompiler_.dataFieldDictionaryDisplay(localVarId));
+                        }
+                        localNum++;
+                    }
+                    if (decompType & 1)
+                    {
+                        sb.append(";").eol();
+                    }
+                }
+                printCodeInstr(sb, sectionSubInfo_[ii]._CodeInstr, ii, decompType);
+            }
+            if (infoItemRaw)
+            {
+                printRaw(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+            }
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlSuffix(10, sectionSubInfo_[ii].Index)); }
+        }
+    }
+}
+
+void fileStructure::printData(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch, int itemIndex)
+{
+    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
+    {
+        if ((itemIndex < 0) || (itemIndex == sectionSubInfo_[ii].Index))
+        {
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlPrefix(11, sectionSubInfo_[ii].Index)); }
+            if (infoItem)
+            {
+                sb.append(itemInfoText(11, sectionSubInfo_[ii]));
+                sb.append("data[").append(sectionSubInfo_[ii].Index).append("]");
+                sb.append(wasmDecompiler_.metaTagGetTempl(209, sectionSubInfo_[ii].Index, " ", ""));
+                sb.append(" - ").append(sectionSubInfo_[ii]._CodeSize).append(" bytes");
+                if (!sectionSubInfo_[ii]._CodeGood)
+                {
+                    sb.append(" !!! CODE PARSE ERROR !!!");
+                }
+                sb.eol();
+            }
+            if (infoCode)
+            {
+                std::string header = wasmDecompiler_.valueTypeName(wasmDecompiler_.fieldType_i32) + " data" + std::to_string( sectionSubInfo_[ii].Index) + "_offset";
+                if (sectionSubInfo_[ii]._CodeInstr.size() > 0)
+                {
+                    printCodeText(sb, sectionSubInfo_[ii].Addr, 1);
+                    sb.append(codeInstrInfoBlank());
+
+                    if (decompType & 1)
+                    {
+                        sb.append(wasmDecompiler_.htmlPrefix(311, sectionSubInfo_[ii].Index)).append(header).append(wasmDecompiler_.htmlSuffix(311, sectionSubInfo_[ii].Index)).eol();
+                        printCodeText(sb, -1, 1);
+                        sb.append(codeInstrInfoBlank());
+                        sb.append("{");
+                    }
+                    else
+                    {
+                        sb.append(wasmDecompiler_.htmlPrefix(311, sectionSubInfo_[ii].Index)).append(header).append(";").append(wasmDecompiler_.htmlSuffix(311, sectionSubInfo_[ii].Index));
+                    }
+                    sb.eol();
+                }
+
+                wasmDecompiler_.reset("*" + wasmDecompiler_.htmlPrefix(411, sectionSubInfo_[ii].Index) + header + (((decompType & 2) ? "" : ";")) + wasmDecompiler_.htmlSuffix(411, sectionSubInfo_[ii].Index), decompBranch, sectionSubInfo_[ii]._CodeDataFieldDictionary);
+                wasmDecompiler_.dataFieldDictionarySet("", 0, "return", 0);
+                printCodeInstr(sb, sectionSubInfo_[ii]._CodeInstr, ii, decompType);
+                printRaw(sb, sectionSubInfo_[ii]._CodeAddr, sectionSubInfo_[ii]._CodeSize);
+            }
+            if (infoItemRaw)
+            {
+                printRaw(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+            }
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlSuffix(11, sectionSubInfo_[ii].Index)); }
+        }
+    }
+}
+
+void fileStructure::printDataCount(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode)
+{
+    sb.append("Data count: ").append(sectionInfo__.StartIdx).eol();
+}
+
+void fileStructure::printTag(stringBuf &sb, sectionInfo &sectionInfo__, bool infoItem, bool infoItemRaw, bool infoCode, int itemIndex)
+{
+    for (int ii = sectionInfo__.SubIdx1; ii < sectionInfo__.SubIdx2; ii++)
+    {
+        if ((itemIndex < 0) || (itemIndex == sectionSubInfo_[ii].Index))
+        {
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlPrefix(13, sectionSubInfo_[ii].Index)); }
+            if (infoItem)
+            {
+                sb.append(itemInfoText(13, sectionSubInfo_[ii]));
+                sb.append("tag[").append(sectionSubInfo_[ii].Index).append("]");
+                sb.append(wasmDecompiler_.metaTagGetTempl(211, sectionSubInfo_[ii].Index, " ", ""));
+                sb.append("  ").append(sectionSubInfo_[ii]._TypeReturn[0]).append("  ").append(sectionSubInfo_[ii]._TypeReturn[1]);
+                for (int i_ = 0; i_ < sectionInfo_.size(); i_++)
+                {
+                    if (sectionInfo_[i_].Id == 1)
+                    {
+                        for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
+                        {
+                            if (sectionSubInfo_[ii0].Index == sectionSubInfo_[ii]._TypeReturn[1])
+                            {
+                                sb.append("  return = {");
+                                for (int iii = 0; iii < sectionSubInfo_[ii0]._TypeReturn.size(); iii++)
+                                {
+                                    if (iii > 0) sb.append(", ");
+                                    sb.append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeReturn[iii]));
+                                }
+                                sb.append("}  param = {");
+                                for (int iii = 0; iii < sectionSubInfo_[ii0]._TypeParams.size(); iii++)
+                                {
+                                    if (iii > 0) sb.append(", ");
+                                    sb.append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeParams[iii]));
+                                }
+                                sb.append("};");
+                            }
                         }
                     }
                 }
+                sb.eol();
             }
-            ss << std::endl;
-        }
-        if (infoItemRaw)
-        {
-            printRaw(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-        }
-        if (infoCode)
-        {
-            printCodeText(ss, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
-            ss << codeInstrInfoBlank();
-
-
-            for (int i_ = 0; i_ < sectionInfo_.size(); i_++)
+            if (infoItemRaw)
             {
-                if (sectionInfo_[i_].Id == 1)
+                printRaw(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+            }
+            if (infoCode)
+            {
+                printCodeText(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
+                sb.append(codeInstrInfoBlank());
+
+
+                for (int i_ = 0; i_ < sectionInfo_.size(); i_++)
                 {
-                    for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
+                    if (sectionInfo_[i_].Id == 1)
                     {
-                        if (sectionSubInfo_[ii0].Index == sectionSubInfo_[ii]._TypeReturn[1])
+                        for (int ii0 = sectionInfo_[i_].SubIdx1; ii0 < sectionInfo_[i_].SubIdx2; ii0++)
                         {
-                            for (int iii = 0; iii < sectionSubInfo_[ii0]._TypeReturn.size(); iii++)
+                            if (sectionSubInfo_[ii0].Index == sectionSubInfo_[ii]._TypeReturn[1])
                             {
-                                if (iii > 0)
-                                {
-                                    ss << "_";
-                                }
-                                ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeReturn[iii]);
-                            }
-                            if (sectionSubInfo_[ii0]._TypeReturn.size() == 0) ss << "void";
-                            ss << " template(";
-                            if (sectionSubInfo_[ii0]._TypeParams.size() > 0)
-                            {
-                                for (int iii = 0; iii < sectionSubInfo_[ii0]._TypeParams.size(); iii++)
+                                for (int iii = 0; iii < sectionSubInfo_[ii0]._TypeReturn.size(); iii++)
                                 {
                                     if (iii > 0)
                                     {
-                                        ss << ", ";
+                                        sb.append("_");
                                     }
-                                    ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeParams[iii]);
-                                    ss << " ";
-                                    if (wasmDecompiler_.decompOptVariableHungarian)
-                                    {
-                                        ss << wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeParams[iii]) << "_";
-                                    }
-                                    ss << "param" << iii;
+                                    sb.append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeReturn[iii]));
                                 }
+                                if (sectionSubInfo_[ii0]._TypeReturn.size() == 0) sb.append("void");
+                                sb.append(" template(");
+                                if (sectionSubInfo_[ii0]._TypeParams.size() > 0)
+                                {
+                                    for (int iii = 0; iii < sectionSubInfo_[ii0]._TypeParams.size(); iii++)
+                                    {
+                                        if (iii > 0)
+                                        {
+                                            sb.append(", ");
+                                        }
+                                        sb.append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeParams[iii]));
+                                        sb.append(" ");
+                                        if (wasmDecompiler_.decompOptVariableHungarian)
+                                        {
+                                            sb.append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii0]._TypeParams[iii])).append("_");
+                                        }
+                                        sb.append("param").append(iii);
+                                    }
+                                }
+                                else
+                                {
+                                    sb.append("void");
+                                }
+                                sb.append(");");
                             }
-                            else
-                            {
-                                ss << "void";
-                            }
-                            ss << ");";
                         }
                     }
                 }
+                sb.eol();
             }
-            ss << std::endl;
+            if (itemIndex < 0) { sb.append(wasmDecompiler_.htmlSuffix(13, sectionSubInfo_[ii].Index)); }
         }
     }
 }
 
-void fileStructure::printRaw(std::stringstream &ss, int rawAddr, int rawSize)
+void fileStructure::printRaw(stringBuf &sb, int rawAddr, int rawSize)
 {
     int ptr = rawAddr;
     std::string blankByte = "--";
     std::string blankChar = "-";
-    ss << hex::IntToHex32(ptr - (ptr & 15)) << "  ";
+    sb.append(hex::IntToHex32(ptr - (ptr & 15))).append("  ");
     std::string Str1 = "";
     std::string Str2 = " ";
     if ((rawAddr & 15) != 0)
@@ -1264,8 +1526,8 @@ void fileStructure::printRaw(std::stringstream &ss, int rawAddr, int rawSize)
 
         if (((ptr & 15) == 0) && (ii < (rawSize - 1)))
         {
-            ss << Str1 << Str2 << std::endl;
-            ss << hex::IntToHex32(ptr) << "  ";
+            sb.append(Str1).append(Str2).eol();
+            sb.append(hex::IntToHex32(ptr)).append("  ");
             Str1 = "";
             Str2 = " ";
         }
@@ -1283,10 +1545,10 @@ void fileStructure::printRaw(std::stringstream &ss, int rawAddr, int rawSize)
             }
         }
     }
-    ss << Str1 << Str2 << std::endl;
+    sb.append(Str1).append(Str2).eol();
 }
 
-std::string fileStructure::print(int codeBinSize_, int sectionId, bool infoRaw, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch, int decompOpts)
+std::string fileStructure::print(int codeBinSize_, int sectionId, bool infoRaw, bool infoItem, bool infoItemRaw, bool infoCode, int decompType, int decompBranch, int decompOpts, int itemIndex)
 {
     switch (decompOpts & 3)
     {
@@ -1314,7 +1576,10 @@ std::string fileStructure::print(int codeBinSize_, int sectionId, bool infoRaw, 
 
     codeBinSize = codeBinSize_;
 
-    std::stringstream ss;
+    int totalItems = 0;
+
+    stringBuf sb;
+    sb.clear(wasmDecompiler_.useHtml);
     int ptr = 0;
     for (int i = 0; i < sectionInfo_.size(); i++)
     {
@@ -1346,35 +1611,35 @@ std::string fileStructure::print(int codeBinSize_, int sectionId, bool infoRaw, 
         {
             ptr = sectionInfo_[i].Addr;
 
-            if (true)
+            if (itemIndex == (-1))
             {
-                ss << "Section type, address and size: ";
+                sb.append("Section type, address and size: ");
                 switch (sectionInfo_[i].Id)
                 {
-                    case  0: ss << "Custom (0)"; break;
-                    case  1: ss << "Type (1)"; break;
-                    case  2: ss << "Import (2)"; break;
-                    case  3: ss << "Function (3)"; break;
-                    case  4: ss << "Table (4)"; break;
-                    case  5: ss << "Memory (5)"; break;
-                    case  6: ss << "Global (6)"; break;
-                    case  7: ss << "Export (7)"; break;
-                    case  8: ss << "Start (8)"; break;
-                    case  9: ss << "Element (9)"; break;
-                    case 10: ss << "Code (10)"; break;
-                    case 11: ss << "Data (11)"; break;
-                    case 12: ss << "DataCount (12)"; break;
-                    case 13: ss << "Tag (13)"; break;
-                    default: ss << "Unknown (" << sectionInfo_[i].Id << ")"; break;
-                    case 255:ss << "Header"; break;
+                    case  0: sb.append("Custom (0)"); break;
+                    case  1: sb.append("Type (1)"); break;
+                    case  2: sb.append("Import (2)"); break;
+                    case  3: sb.append("Function (3)"); break;
+                    case  4: sb.append("Table (4)"); break;
+                    case  5: sb.append("Memory (5)"); break;
+                    case  6: sb.append("Global (6)"); break;
+                    case  7: sb.append("Export (7)"); break;
+                    case  8: sb.append("Start (8)"); break;
+                    case  9: sb.append("Element (9)"); break;
+                    case 10: sb.append("Code (10)"); break;
+                    case 11: sb.append("Data (11)"); break;
+                    case 12: sb.append("DataCount (12)"); break;
+                    case 13: sb.append("Tag (13)"); break;
+                    default: sb.append("Unknown (").append(sectionInfo_[i].Id).append(")"); break;
+                    case 255:sb.append("Header"); break;
                 }
-                ss << ", " << hex::IntToHex32(sectionInfo_[i].Addr);
-                ss << "-" << hex::IntToHex32(sectionInfo_[i].Addr + sectionInfo_[i].Size - 1);
-                ss << ", " << sectionInfo_[i].Size << " bytes" << std::endl;
+                sb.append(", ").append(hex::IntToHex32(sectionInfo_[i].Addr));
+                sb.append("-").append(hex::IntToHex32(sectionInfo_[i].Addr + sectionInfo_[i].Size - 1));
+                sb.append(", ").append(sectionInfo_[i].Size).append(" bytes").eol();
 
-                ss << "Data address and size: " << hex::IntToHex32(sectionInfo_[i].DataAddr);
-                ss << "-" << hex::IntToHex32(sectionInfo_[i].DataAddr + sectionInfo_[i].DataSize - 1);
-                ss << ", " << sectionInfo_[i].DataSize << " bytes" << std::endl;
+                sb.append("Data address and size: ").append(hex::IntToHex32(sectionInfo_[i].DataAddr));
+                sb.append("-").append(hex::IntToHex32(sectionInfo_[i].DataAddr + sectionInfo_[i].DataSize - 1));
+                sb.append(", ").append(sectionInfo_[i].DataSize).append(" bytes").eol();
                 switch (sectionInfo_[i].Id)
                 {
                     case 1:
@@ -1387,44 +1652,78 @@ std::string fileStructure::print(int codeBinSize_, int sectionId, bool infoRaw, 
                     case 9:
                     case 10:
                     case 11:
-                        ss << "Section items: " << (sectionInfo_[i].SubIdx2 - sectionInfo_[i].SubIdx1) << std::endl;
+                    case 13:
+                        sb.append("Section items: ").append((sectionInfo_[i].SubIdx2 - sectionInfo_[i].SubIdx1)).eol();
+                        break;
+                    //case 8:
+                    //case 12:
+                    case 255:
+                        printRaw(sb, sectionInfo_[i].Addr, sectionInfo_[i].Size);
                         break;
                 }
-            }
-            if (sectionInfo_[i].ParseStatus == 0)
-            {
-                ss << "!!! SECTION PARSE ERROR !!!" << std::endl;
-            }
-            if (sectionInfo_[i].ParseStatus == 2)
-            {
-                ss << "Section parse is not implemented" << std::endl;
+
+                if (sectionInfo_[i].ParseStatus == 0)
+                {
+                    sb.append("!!! SECTION PARSE ERROR !!!").eol();
+                }
+                if (sectionInfo_[i].ParseStatus == 2)
+                {
+                    sb.append("Section parse is not implemented").eol();
+                }
+
+                if (infoRaw)
+                {
+                    printRaw(sb, sectionInfo_[i].Addr, sectionInfo_[i].Size);
+                }
             }
 
-            if (infoRaw)
-            {
-                printRaw(ss, sectionInfo_[i].Addr, sectionInfo_[i].Size);
-            }
-
-            if (infoItem || infoCode || infoItemRaw)
+            if ((itemIndex != (-2)) && (infoItem || infoCode || infoItemRaw))
             {
                 switch (sectionInfo_[i].Id)
                 {
-                    case 1: printType(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
-                    case 2: printImport(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
-                    case 3: printFunction(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
-                    case 4: printTable(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
-                    case 5: printMemory(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
-                    case 6: printGlobal(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode, decompType, decompBranch); break;
-                    case 7: printExport(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
-                    case 8: printStart(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
-                    case 9: printElement(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
-                    case 10: printCode(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode, decompType, decompBranch); break;
-                    case 11: printData(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode, decompType, decompBranch); break;
-                    case 12: printDataCount(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
-                    case 13: printTag(ss, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
+                    case 0: printCustom(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode, itemIndex); break;
+                    case 1: printType(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode, itemIndex); break;
+                    case 2: printImport(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode, itemIndex); break;
+                    case 3: printFunction(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode, itemIndex); break;
+                    case 4: printTable(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode, itemIndex); break;
+                    case 5: printMemory(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode, itemIndex); break;
+                    case 6: printGlobal(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode, decompType, decompBranch, itemIndex); break;
+                    case 7: printExport(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode, itemIndex); break;
+                    case 8: printStart(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
+                    case 9: printElement(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode, decompType, decompBranch, itemIndex); break;
+                    case 10: printCode(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode, decompType, decompBranch, itemIndex); break;
+                    case 11: printData(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode, decompType, decompBranch, itemIndex); break;
+                    case 12: printDataCount(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode); break;
+                    case 13: printTag(sb, sectionInfo_[i], infoItem, infoItemRaw, infoCode, itemIndex); break;
                 }
             }
+
+            switch (sectionInfo_[i].Id)
+            {
+                case 0:
+                    totalItems++;
+                    break;
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                case 6:
+                case 7:
+                case 9:
+                case 10:
+                case 11:
+                case 13:
+                    totalItems = totalItems + (sectionInfo_[i].SubIdx2 - sectionInfo_[i].SubIdx1);
+                    break;
+            }
         }
+        sb.flush();
     }
-    return ss.str();
+    if (itemIndex == (-2))
+    {
+        return std::to_string(totalItems);
+    }
+    std::string strX = sb.getString();
+    return strX;
 }

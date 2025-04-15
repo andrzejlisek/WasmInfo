@@ -28,12 +28,14 @@ public:
     static std::string StringFindReplace(std::string S, std::string From, std::string To);
     static std::string indent(int n);
     static std::string pad(int n);
+
 private:
     static std::string floatToStr_(std::string NumStr, int Digits);
 public:
     static std::string floatToStr(double Num, int Digits);
     static std::string singleToStr(double Num);
     static std::string doubleToStr(double Num);
+    static std::string inline strToHtmlRaw() { return "\x1B"; };
 };
 
 #endif // HEX_H

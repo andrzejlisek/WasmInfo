@@ -5,7 +5,7 @@
 
 fileStructure fileStructure_;
 std::vector<unsigned char> wasmRaw;
-std::string wasmText;
+std::string infoText;
 
 extern "C"
 {
@@ -63,15 +63,24 @@ extern "C"
         {
             wasmRaw.push_back(0);
         }
-
         fileStructure_.parse(wasmRaw.data(), wasmRaw.size() - 8);
     }
 
     EMSCRIPTEN_KEEPALIVE
-    const char * getInfo(int codeBinSize, int sectionId, int infoRaw, int infoItem, int infoItemRaw, int infoCode, int decompType, int decompBranch, int decompOpts)
+    int getInfo(int codeBinSize, int sectionId, int infoRaw, int infoItem, int infoItemRaw, int infoCode, int decompType, int decompBranch, int decompOpts, int itemIndex)
     {
-        wasmText = fileStructure_.print(codeBinSize, sectionId, infoRaw, infoItem, infoItemRaw, infoCode, decompType, decompBranch, decompOpts);
-        return wasmText.c_str();
+        infoText.clear();
+        infoText.shrink_to_fit();
+        infoText = fileStructure_.print(codeBinSize, sectionId, infoRaw, infoItem, infoItemRaw, infoCode, decompType, decompBranch, decompOpts, itemIndex);
+        return infoText.length();
+    }
+    
+    EMSCRIPTEN_KEEPALIVE
+    void getInfoText(char * buf)
+    {
+        memcpy(buf, infoText.c_str(), infoText.length() + 1);
+        infoText.clear();
+        infoText.shrink_to_fit();
     }
 }
 

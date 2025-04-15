@@ -32,49 +32,60 @@ The WASM file contents consists of sections\. Each section has the identifier in
 
 The WebAssembly standard settled the 12 types of sections\. Below the **WASM file field**, there is the list of all sections, which are actually exists in the parsed WASM file\. Each item link into the section information\.
 
-Each section header has the two elements:
+Each section header has the two active elements:
 
 
-* **Caret** \- Scroll the page to sectin list\.
-* **Minus** or **Plus** \- Collapse or expand the section information\.
+* **Caret** \- Scroll the page to section list\.
+* **Section title** \- Collapse or expand the section information\.
 
 The **WasmInfo** has these options to view the file details:
 
 
-* **Section raw binary** \- The binary data of the whole section in hexadecimal form\.
-* **Item information** \- The basic item information in section, which contains the items\. If the item has some execution code \(**Global**, **Code**, **Data**\), the incorrectly parsed code will be indicated as **ERROR** message\. These information consists of the several elements:
-  * Item number\.
-  * Item address in the WASM file in hexadecial form\.
-  * Additional information depending on section\.
-* **Item raw binary** \- The binary data of each item separately\.
-* **Item details** \- The item details depending on section and item\.
 * **Code binary size** \- The number of bytes between address and code text in some sections, which contains the data\.
-* **Code kind** \- The code kind to display in execudion code containing sections:
-  * **Function names** \- Display the function names without function body\.
-  * **Disassembled** \- Display the disassembled code only\.
-  * **Decompiled** \- Display the decompiled code only\. If the disassembled code contains any error, the decompiled code will be displayed as empty function\.
-  * **Both** \- Display both disassembled and decompiled code simultaneously
-* **Branches** \- Branch interpretation and conversion in decompiled code:
-  * **Keep as numbers** \- Display unprocessed numbers in branch instructions\.
-  * **Convert into labels** \- Insert labels into code and replace the numbers with label names\.
-  * **Flatten block/loop** \- Convert numbers into labels and flatten every **block** and **loop** instruction\.
-* **Control flow** \- Style of decompiled code flow:
-  * **Details** \- Write detailed parameter assignmend from stack and result assignment to stack\.
-  * **Stack** \- Write stack assignment as parameters and results\. The code remains unfolded\.
-  * **Partial fold** \- Fold some assignment instructions, but keep most instruction for stack contents\.
-  * **Fold** \- Fold all instrucions as possible\. The stack contents will not be displayed\.
 * **Stack contents** \- Display stack contents for every instruction within disassembled and decompiled code\.
 * **Variable declare** \- Declate local and temporary variables at the first occurence\.
 * **Hungarian naming style** \- Use hungarian style for naming variables\.
 
-# Execution code analysis
+## Section elements
 
-Some sections, especially the **Code** section, may consist the executable code written in WebAssembly machine code\. Such code are written in the three forms:
+Most sections consists of element list\. Such sections are collapsed in initial display\. These sections has the following elements:
 
 
-* **The raw binary code** \- Each instruction is written as byte sequence including opcode and hardcoded parameters\.
-* **The C\-like assembly code** \- The human\-readable code which is the exact reproduction of binary code\. The code format is inpired by the C language and mnemonic are renamed to be a correct identifiers, like replace dot character into underscore character\. Additionally, there are written the function names and varialbe types based on the information from other section\. The varialbe types and called function name are written as commend for more clarity\.
-* **The C\-like decompiled code** \- The second version of function written below is the simply decompiled code\. The decompiling algorithm assumes, that the WebAssembly code has correct stack handling\. In some cases, the simple functions, especially mathematical operations, may look similarly to the optimized soruce code uded to compile the WASM file\.
+* **List** \- Display all items as summary\. There is default display, every item is displayed as single text line\.
+* **Details** \- Display all items as details\. There is detailed display\. In some cases, the detailed display of certain elements is not available and will remain in summary mode\.
+* **Raw** \- Display all items as raw using hexadecimal byte layout\.
+
+Every item has active element, which switches the intem between three states mentioned above\. If the detailed information not exists, the active element switches between two states\.
+
+## Code elements
+
+These sections can contain some WebAssembly code:
+
+
+* **Global** \- mandatory code for value\.
+* **Element** \- optional code for offset\.
+* **Code** \- main program code\.
+* **Data** \- optional code for offset\.
+
+If the item is detailed, there are active two instances of function name:
+
+
+* **Disassembly** \- The code generated directly from the original WebAssembly code\. The link switches between two states:
+  * **Collapsed** \- Display name only\.
+  * **Expanded** \- Display disassembled code\.
+* **Decompile** \- The code similar to C language, generated from the WebAssembly code\. The link switches between five states \(the identical states are skipped\):
+  * **Collapsed** \- Display name only\.
+  * **Folded all as possible** \- The stack contents is not visible\.
+  * **Filded assignments, unfolded instructions** \- The stack contents is visible, these instructions can not be folded\.
+  * **Stack** \- The stack usage is not folded\.
+  * **Full** \- The most detailed code, whis is directly generated during decompilation\.
+
+Some code can contains blocks created by **block** and **loop** instructions\. The decompiled code has the **/\*bloop\*/** link, named from **blo**ck and lo**op** names\. The **bloop** switches between three states:
+
+
+* **Blocks and numbers** \- The decompiled code most similar to original\.
+* **Convert numbers into labels** \- The state is avaliable, when the code contains branch instructions\. Into the code, there are added labels and numbers in branch instuctions are replaced with labels\.
+* **Flatten lock and loop** \- Remove every **block** and **loop** block and flatten the code\.
 
 The two code versions can be used as code in several programming languages like C, C\+\+, Java, C\#, but is not fully correct as any general\-purpose programming language\. after some additional corrections, such as:
 

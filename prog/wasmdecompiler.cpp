@@ -2,14 +2,28 @@
 
 wasmDecompiler::wasmDecompiler()
 {
-    valueTypeXNumber.push_back(0x7F); valueTypeXName.push_back("i32");
-    valueTypeXNumber.push_back(0x7E); valueTypeXName.push_back("i64");
-    valueTypeXNumber.push_back(0x7D); valueTypeXName.push_back("f32");
-    valueTypeXNumber.push_back(0x7C); valueTypeXName.push_back("f64");
-    valueTypeXNumber.push_back(0x7B); valueTypeXName.push_back("v128");
+    // MVP
+    valueTypeXNumber.push_back(0x7F); valueTypeXName.push_back("i32"); // int
+    valueTypeXNumber.push_back(0x7E); valueTypeXName.push_back("i64"); // long
+    valueTypeXNumber.push_back(0x7D); valueTypeXName.push_back("f32"); // float
+    valueTypeXNumber.push_back(0x7C); valueTypeXName.push_back("f64"); // double
+
+    // SIMD
+    valueTypeXNumber.push_back(0x7B); valueTypeXName.push_back("v128"); // __m128
+
+    // Reference type
     valueTypeXNumber.push_back(0x70); valueTypeXName.push_back("funcref");
     valueTypeXNumber.push_back(0x6F); valueTypeXName.push_back("externref");
+
+    // Garbage Collection
+    valueTypeXNumber.push_back(0x6E); valueTypeXName.push_back("anyref"); //externref,eqref,i31ref,structref,arrayref
+    valueTypeXNumber.push_back(0x6D); valueTypeXName.push_back("eqref");
+    valueTypeXNumber.push_back(0x6C); valueTypeXName.push_back("i31ref");
+    valueTypeXNumber.push_back(0x6B); valueTypeXName.push_back("structref");
+    valueTypeXNumber.push_back(0x6A); valueTypeXName.push_back("arrayref");
     valueTypeXNumber.push_back(0x69); valueTypeXName.push_back("exnref");
+    valueTypeXNumber.push_back(0x68); valueTypeXName.push_back("ref");
+    valueTypeXNumber.push_back(0x67); valueTypeXName.push_back("refnull");
 }
 
 int wasmDecompiler::valueTypeNumber(std::string typeSig)
@@ -19,6 +33,25 @@ int wasmDecompiler::valueTypeNumber(std::string typeSig)
         if (valueTypeXName[i] == typeSig) return valueTypeXNumber[i];
     }
     return 0x00;
+}
+
+bool wasmDecompiler::valueTypeIsStandard(int typeSig)
+{
+    if (typeSig >= 0x40)
+    {
+        return true;
+
+    }
+    else
+    {
+        return false;
+    }
+
+    for (int i = 0; i < valueTypeXNumber.size(); i++)
+    {
+        if (valueTypeXNumber[i] == typeSig) return true;
+    }
+    return false;
 }
 
 std::string wasmDecompiler::valueTypeName(int typeSig)
@@ -38,14 +71,6 @@ std::string wasmDecompiler::valueTypeName(int typeSig)
         case 0x00: return "value";
         case fieldType_u_: return "u";
         case fieldType_void: return "void";
-        /*case fieldType_i32: return "i32";
-        case fieldType_i64: return "i64";
-        case fieldType_f32: return "f32";
-        case fieldType_f64: return "f64";
-        case fieldType_v128: return "v128";
-        case fieldType_funcref: return "funcref";
-        case fieldType_externref: return "externref";
-        case fieldType_exnref: return "exnref";*/
         default:   return "0x" + hex::IntToHex8(typeSig);
     }
 }
@@ -181,7 +206,7 @@ std::string wasmDecompiler::dataFieldDictionaryDisplay(std::string id)
                 {
                     if (dataFieldDictionary[i].isParam)
                     {
-                        return typePrefix + "param" + std::to_string(dataFieldDictionary[i].fieldNumber);
+                        return typePrefix + metaTagGet2(102, metaTagFunctionNumber, dataFieldDictionary[i].fieldNumber, "param" + std::to_string(dataFieldDictionary[i].fieldNumber));
                     }
                     else
                     {
@@ -203,13 +228,22 @@ std::string wasmDecompiler::dataFieldDictionaryDisplay(std::string id)
                                 }
                             }
                         }
+                        std::string varDispName = dataFieldDictionary[i].fieldCategory + std::to_string(dataFieldDictionary[i].fieldNumber);
+                        if ((dataFieldDictionary[i].fieldCategory == "local") || (dataFieldDictionary[i].fieldCategory == "param"))
+                        {
+                            varDispName = metaTagGet2(102, metaTagFunctionNumber, dataFieldDictionary[i].fieldNumber, varDispName);
+                        }
+                        if ((dataFieldDictionary[i].fieldCategory == "global"))
+                        {
+                            varDispName = metaTagGet(107, dataFieldDictionary[i].fieldNumber, varDispName);
+                        }
                         if (multiType)
                         {
-                            return typePrefix + dataFieldDictionary[i].fieldCategory + std::to_string(dataFieldDictionary[i].fieldNumber) + "_" + valueTypeName(dataFieldDictionary[i].fieldType & 255);
+                            return typePrefix + varDispName + "_" + valueTypeName(dataFieldDictionary[i].fieldType & 255);
                         }
                         else
                         {
-                            return typePrefix + dataFieldDictionary[i].fieldCategory + std::to_string(dataFieldDictionary[i].fieldNumber);
+                            return typePrefix + varDispName;
                         }
                     }
                 }
@@ -421,7 +455,7 @@ std::string wasmDecompiler::printCommand(int idx)
             std::string s_pre = ss.substr(0, fieldI1);
             std::string s_value = dataFieldDictionaryDisplay(ss.substr(fieldI1, fieldI2 - fieldI1 + 4));
             std::string s_suf = ss.substr(fieldI2 + 4);
-            if ((s_value.size() > 0) && ((s_value[0] == '-') || (s_value[0] == '+')))
+            if ((!s_value.empty()) && ((s_value[0] == '-') || (s_value[0] == '+')))
             {
                 bool negBracket = true;
                 if ((s_pre.size() >= 1) && (s_pre[s_pre.size() - 1] == '('))
@@ -538,4 +572,36 @@ std::string wasmDecompiler::printCommand(int idx)
     }
 
     return "`";
+}
+
+std::string wasmDecompiler::htmlPrefix(int id, int idx)
+{
+    if (useHtml)
+    {
+        if (id >= 100)
+        {
+            return hex::strToHtmlRaw() + "<a href=\"javascript:void(0)\" onclick=\"return sectionItem(" + std::to_string(id) + ", " + std::to_string(idx) + ")\">";
+        }
+        else
+        {
+            return hex::strToHtmlRaw() + "<span id=\"section" + std::to_string(id) + "item" + std::to_string(idx) + "\">" + hex::strToHtmlRaw();
+        }
+    }
+    return "";
+}
+
+std::string wasmDecompiler::htmlSuffix(int id, int idx)
+{
+    if (useHtml)
+    {
+        if (id >= 100)
+        {
+            return "</a>" + hex::strToHtmlRaw();
+        }
+        else
+        {
+            return hex::strToHtmlRaw() + "</span>" + hex::strToHtmlRaw();
+        }
+    }
+    return "";
 }

@@ -246,7 +246,7 @@ std::string wasmDecompiler::stackPrintInfo(std::string stackInfo, int stackDepth
             }
         }
     }
-    if ((stackInfo.size() > 0) && (stackInfo[0] != '_') && (stackInfo[0] != '|'))
+    if ((!stackInfo.empty()) && (stackInfo[0] != '_') && (stackInfo[0] != '|'))
     {
         stackInfo = "_" + stackInfo;
     }

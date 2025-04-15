@@ -25,106 +25,135 @@
     <a href="#x12" id="l12">DataCount (12)<br></a>
     <a href="#x13" id="l13">Tag (13)<br></a>
     <hr>
-    <label for="infoRaw">Section raw binary</label> <input type="checkbox" id="infoRaw" name="infoRaw" onchange="printWasmInfo()"><br>
-    <label for="infoItem">Item information</label> <input type="checkbox" id="infoItem" name="infoItem" checked="checked" onchange="printWasmInfo()"><br> 
-    <label for="infoItemRaw">Item raw binary</label> <input type="checkbox" id="infoItemRaw" name="infoItemRaw" onchange="printWasmInfo()"><br>
-    <label for="infoCode">Item details</label> <input type="checkbox" id="infoCode" name="infoCode" checked="checked" onchange="printWasmInfo()"><br> 
-    <label for="binSize">Code binary size</label> <input type="number" id="binSize" name="binSize" value="16" min="1" max="99" onchange="printWasmInfo()"><br>
-    <label for="codeType">Code kind</label> <select id="codeType" onchange="printWasmInfo()"><option selected="selected">Function names</option><option>Disassembled</option><option>Decomplided</option><option>Both</option></select><br>
-    <label for="codeBranch">Branches</label> <select id="codeBranch" onchange="printWasmInfo()"><option>Keep as numbers</option><option selected="selected">Convert into labels</option><option>Flatten block/loop</option></select><br>
-    <label for="decompFlow">Control flow</label> <select id="decompFlow" onchange="printWasmInfo()"><option>Details</option><option selected="selected">Stack</option><option>Partial fold</option><option>Fold</option></select><br>
-    <label for="decompStack">Stack contents</label> <input type="checkbox" id="decompStack" name="decompStack" onchange="printWasmInfo()"><br>
-    <label for="decompDecl">Variable declare</label> <input type="checkbox" id="decompDecl" name="decompDecl" checked="checked" onchange="printWasmInfo()"><br>
-    <label for="decompHung">Hungarian naming style</label> <input type="checkbox" id="decompHung" name="decompHung" checked="checked" onchange="printWasmInfo()"><br>
+    <label for="binSize">Code binary size</label> <input type="number" id="binSize" name="binSize" value="16" min="1" max="99" onchange="printWasmInfoRefresh(-1)"><br>
+    <label for="decompStack">Stack contents</label> <input type="checkbox" id="decompStack" name="decompStack" onchange="printWasmInfoRefresh(-1)"><br>
+    <label for="decompDecl">Variable declare</label> <input type="checkbox" id="decompDecl" name="decompDecl" checked="checked" onchange="printWasmInfoRefresh(-1)"><br>
+    <label for="decompHung">Hungarian naming style</label> <input type="checkbox" id="decompHung" name="decompHung" checked="checked" onchange="printWasmInfoRefresh(-1)"><br>
 
     <hr>
     <div id="divx99">
-      <a name="x99"><h1><a href="#x">^</a> <a id="i99" href="javascript:infoShowHide('99')">?</a> Header</h1></a>
+      <a name="x99"><h1><a href="#x">^^^</a> <a id="i99" href="javascript:infoShowHide('99')">Header</a></h1></a>
       <div id="div99">
         <pre id="wasmInfo99"></pre>
       </div>
     </div>
     <div id="divx00">
-      <a name="x00"><h1><a href="#x">^</a> <a id="i00" href="javascript:infoShowHide('00')">?</a> Custom (0)</h1></a>
+      <a name="x00"><h1><a href="#x">^^^</a> <a id="i00" href="javascript:infoShowHide('00')">Custom (0)</a></h1></a>
       <div id="div00">
+        <input type="button" onclick="sectionAllItems(0, 0)" value="Summary">
+        <input type="button" onclick="sectionAllItems(0, 1)" value="Details">
+        <input type="button" onclick="sectionAllItems(0, 2)" value="Raw data">
         <pre id="wasmInfo00"></pre>
       </div>
     </div>
     <div id="divx01">
-      <a name="x01"><h1><a href="#x">^</a> <a id="i01" href="javascript:infoShowHide('01')">?</a> Type (1)</h1></a>
+      <a name="x01"><h1><a href="#x">^^^</a> <a id="i01" href="javascript:infoShowHide('01')">Type (1)</a></h1></a>
       <div id="div01">
+        <input type="button" onclick="sectionAllItems(1, 0)" value="Summary">
+        <input type="button" onclick="sectionAllItems(1, 1)" value="Details">
+        <input type="button" onclick="sectionAllItems(1, 2)" value="Raw data">
         <pre id="wasmInfo01"></pre>
       </div>
     </div>
     <div id="divx02">
-      <a name="x02"><h1><a href="#x">^</a> <a id="i02" href="javascript:infoShowHide('02')">?</a> Import (2)</h1></a>
+      <a name="x02"><h1><a href="#x">^^^</a> <a id="i02" href="javascript:infoShowHide('02')">Import (2)</a></h1></a>
       <div id="div02">
+        <input type="button" onclick="sectionAllItems(2, 0)" value="Summary">
+        <input type="button" onclick="sectionAllItems(2, 1)" value="Details">
+        <input type="button" onclick="sectionAllItems(2, 2)" value="Raw data">
         <pre id="wasmInfo02"></pre>
       </div>
     </div>
     <div id="divx03">
-      <a name="x03"><h1><a href="#x">^</a> <a id="i03" href="javascript:infoShowHide('03')">?</a> Function (3)</h1></a>
+      <a name="x03"><h1><a href="#x">^^^</a> <a id="i03" href="javascript:infoShowHide('03')">Function (3)</a></h1></a>
       <div id="div03">
+        <input type="button" onclick="sectionAllItems(3, 0)" value="Summary">
+        <input type="button" onclick="sectionAllItems(3, 1)" value="Details">
+        <input type="button" onclick="sectionAllItems(3, 2)" value="Raw data">
         <pre id="wasmInfo03"></pre>
       </div>
     </div>
     <div id="divx04">
-      <a name="x04"><h1><a href="#x">^</a> <a id="i04" href="javascript:infoShowHide('04')">?</a> Table (4)</h1></a>
+      <a name="x04"><h1><a href="#x">^^^</a> <a id="i04" href="javascript:infoShowHide('04')">Table (4)</a></h1></a>
       <div id="div04">
+        <input type="button" onclick="sectionAllItems(4, 0)" value="Summary">
+        <input type="button" onclick="sectionAllItems(4, 1)" value="Details">
+        <input type="button" onclick="sectionAllItems(4, 2)" value="Raw data">
         <pre id="wasmInfo04"></pre>
       </div>
     </div>
     <div id="divx05">
-      <a name="x05"><h1><a href="#x">^</a> <a id="i05" href="javascript:infoShowHide('05')">?</a> Memory (5)</h1></a>
+      <a name="x05"><h1><a href="#x">^^^</a> <a id="i05" href="javascript:infoShowHide('05')">Memory (5)</a></h1></a>
       <div id="div05">
+        <input type="button" onclick="sectionAllItems(5, 0)" value="Summary">
+        <input type="button" onclick="sectionAllItems(5, 1)" value="Details">
+        <input type="button" onclick="sectionAllItems(5, 2)" value="Raw data">
         <pre id="wasmInfo05"></pre>
       </div>
     </div>
     <div id="divx06">
-      <a name="x06"><h1><a href="#x">^</a> <a id="i06" href="javascript:infoShowHide('06')">?</a> Global (6)</h1></a>
+      <a name="x06"><h1><a href="#x">^^^</a> <a id="i06" href="javascript:infoShowHide('06')">Global (6)</a></h1></a>
       <div id="div06">
+        <input type="button" onclick="sectionAllItems(6, 0)" value="Summary">
+        <input type="button" onclick="sectionAllItems(6, 1)" value="Details">
+        <input type="button" onclick="sectionAllItems(6, 2)" value="Raw data">
         <pre id="wasmInfo06"></pre>
       </div>
     </div>
     <div id="divx07">
-      <a name="x07"><h1><a href="#x">^</a> <a id="i07" href="javascript:infoShowHide('07')">?</a> Export (7)</h1></a>
+      <a name="x07"><h1><a href="#x">^^^</a> <a id="i07" href="javascript:infoShowHide('07')">Export (7)</a></h1></a>
       <div id="div07">
+        <input type="button" onclick="sectionAllItems(7, 0)" value="Summary">
+        <input type="button" onclick="sectionAllItems(7, 1)" value="Details">
+        <input type="button" onclick="sectionAllItems(7, 2)" value="Raw data">
         <pre id="wasmInfo07"></pre>
       </div>
     </div>
     <div id="divx08">
-      <a name="x08"><h1><a href="#x">^</a> <a id="i08" href="javascript:infoShowHide('08')">?</a> Start (8)</h1></a>
+      <a name="x08"><h1><a href="#x">^^^</a> <a id="i08" href="javascript:infoShowHide('08')">Start (8)</a></h1></a>
       <div id="div08">
         <pre id="wasmInfo08"></pre>
       </div>
     </div>
     <div id="divx09">
-      <a name="x09"><h1><a href="#x">^</a> <a id="i09" href="javascript:infoShowHide('09')">?</a> Element (9)</h1></a>
+      <a name="x09"><h1><a href="#x">^^^</a> <a id="i09" href="javascript:infoShowHide('09')">Element (9)</a></h1></a>
       <div id="div09">
+        <input type="button" onclick="sectionAllItems(9, 0)" value="Summary">
+        <input type="button" onclick="sectionAllItems(9, 1)" value="Details">
+        <input type="button" onclick="sectionAllItems(9, 2)" value="Raw data">
         <pre id="wasmInfo09"></pre>
       </div>
     </div>
     <div id="divx10">
-      <a name="x10"><h1><a href="#x">^</a> <a id="i10" href="javascript:infoShowHide('10')">?</a> Code (10)</h1></a>
+      <a name="x10"><h1><a href="#x">^^^</a> <a id="i10" href="javascript:infoShowHide('10')">Code (10)</a></h1></a>
       <div id="div10">
+        <input type="button" onclick="sectionAllItems(10, 0)" value="Summary">
+        <input type="button" onclick="sectionAllItems(10, 1)" value="Details">
+        <input type="button" onclick="sectionAllItems(10, 2)" value="Raw data">
         <pre id="wasmInfo10"></pre>
       </div>
     </div>
     <div id="divx11">
-      <a name="x11"><h1><a href="#x">^</a> <a id="i11" href="javascript:infoShowHide('11')">?</a> Data (11)</h1></a>
+      <a name="x11"><h1><a href="#x">^^^</a> <a id="i11" href="javascript:infoShowHide('11')">Data (11)</a></h1></a>
       <div id="div11">
+        <input type="button" onclick="sectionAllItems(11, 0)" value="Summary">
+        <input type="button" onclick="sectionAllItems(11, 1)" value="Details">
+        <input type="button" onclick="sectionAllItems(11, 2)" value="Raw data">
         <pre id="wasmInfo11"></pre>
       </div>
     </div>
     <div id="divx12">
-      <a name="x12"><h1><a href="#x">^</a> <a id="i12" href="javascript:infoShowHide('12')">?</a> DataCount (12)</h1></a>
+      <a name="x12"><h1><a href="#x">^^^</a> <a id="i12" href="javascript:infoShowHide('12')">DataCount (12)</a></h1></a>
       <div id="div12">
         <pre id="wasmInfo12"></pre>
       </div>
     </div>
     <div id="divx13">
-      <a name="x13"><h1><a href="#x">^</a> <a id="i13" href="javascript:infoShowHide('13')">?</a> Tag (13)</h1></a>
+      <a name="x13"><h1><a href="#x">^^^</a> <a id="i13" href="javascript:infoShowHide('13')">Tag (13)</a></h1></a>
       <div id="div13">
+        <input type="button" onclick="sectionAllItems(13, 0)" value="Summary">
+        <input type="button" onclick="sectionAllItems(13, 1)" value="Details">
+        <input type="button" onclick="sectionAllItems(13, 2)" value="Raw data">
         <pre id="wasmInfo13"></pre>
       </div>
     </div>
@@ -146,6 +175,7 @@ function FileBrwUploadEvent()
     if (FileUploadField.files.length == 0)
     {
         Module.ccall("loadBinary", "null", ["string"], [""]);
+        printWasmInfoPrepare();
         printWasmInfo();
     }
     for (let I = 0; I < FileUploadField.files.length; I++)
@@ -156,7 +186,15 @@ function FileBrwUploadEvent()
         FR.onload = function(e)
         {
             const contentB64 = e.target.result.substr(e.target.result.indexOf(',') + 1);
-            Module.ccall("loadBinary", "null", ["string"], [contentB64]);
+            const contentB64L = contentB64.length + 1;
+
+            //Module.ccall("loadBinary", "null", ["string"], [contentB64]);
+            const contentPtr = Module._malloc(contentB64L);
+            Module.stringToUTF8(contentB64, contentPtr, contentB64L);
+            Module.ccall("loadBinary", "null", ["number"], [contentPtr]);
+            Module._free(contentPtr);
+
+            printWasmInfoPrepare();
             printWasmInfo();
         };
         
@@ -170,13 +208,11 @@ function FileBrwUploadEvent()
         {
             if (infoState[n])
             {
-                document.getElementById("i" + n).innerHTML = "+";
                 document.getElementById("div" + n).style["display"] = "none";
                 infoState[n] = false;
             }
             else
             {
-                document.getElementById("i" + n).innerHTML = "-";
                 document.getElementById("div" + n).style["display"] = "";
                 infoState[n] = true;
             }
@@ -185,21 +221,21 @@ function FileBrwUploadEvent()
         
         function initFinish()
         {
-            infoState["00"] = false;
-            infoState["01"] = false;
-            infoState["02"] = false;
-            infoState["03"] = false;
-            infoState["04"] = false;
-            infoState["05"] = false;
-            infoState["06"] = false;
-            infoState["07"] = false;
-            infoState["08"] = false;
-            infoState["09"] = false;
-            infoState["10"] = false;
-            infoState["11"] = false;
-            infoState["12"] = false;
-            infoState["13"] = false;
-            infoState["99"] = false;
+            infoState["00"] = true;
+            infoState["01"] = true;
+            infoState["02"] = true;
+            infoState["03"] = true;
+            infoState["04"] = true;
+            infoState["05"] = true;
+            infoState["06"] = true;
+            infoState["07"] = true;
+            infoState["08"] = true;
+            infoState["09"] = true;
+            infoState["10"] = true;
+            infoState["11"] = true;
+            infoState["12"] = true;
+            infoState["13"] = true;
+            infoState["99"] = true;
             
             infoShowHide("00");
             infoShowHide("01");
@@ -318,40 +354,348 @@ function FileBrwUploadEvent()
             sectionDisplayOne("13");
         }
 
+        let sectionItemState = {};
+
+        function printWasmId(sectionId, itemIndex, param)
+        {
+            return "_" + sectionId + "_" + itemIndex + "_" + param;
+        }
+
+        function printWasmGetText(sectionId, itemIndex)
+        {
+            let codeBinSize = parseInt(document.getElementById("binSize").value);
+            if (isNaN(codeBinSize))
+            {
+                codeBinSize = 8;
+            }
+            if (codeBinSize < 0) codeBinSize = 8;
+            let infoRaw = 0;//document.getElementById("infoRaw").checked ? 1 : 0;
+            let infoItem = 1;
+            let infoItemRaw = 0;
+            let infoCode = 0;
+            let decompBranch = 0;
+            let decompOpts = 0;
+            let decompType = 0;
+            if (document.getElementById("decompDecl").checked) decompOpts += 4;
+            if (document.getElementById("decompHung").checked) decompOpts += 8;
+            if (document.getElementById("decompStack").checked) decompOpts += 16;
+
+            if (itemIndex >= 0)
+            {
+                infoItem = 1;
+                infoCode = sectionItemState[printWasmId(sectionId, itemIndex, "info")];
+                infoItemRaw = sectionItemState[printWasmId(sectionId, itemIndex, "Raw data")];
+            
+                let decomp1 = sectionItemState[printWasmId(sectionId, itemIndex, "decomp1")];
+                let decomp2 = sectionItemState[printWasmId(sectionId, itemIndex, "decomp2")];
+                decompType = decomp1 + ((decomp2 > 0 ? 1 : 0) * 2);
+                decompOpts = decompOpts + ((decomp2 > 0) ? (4 - decomp2) : 0);
+                decompBranch = sectionItemState[printWasmId(sectionId, itemIndex, "decomp3")];
+            }
+            else
+            {
+                infoRaw = 0;
+                infoItemRaw = 0;
+                infoCode = 0;
+                infoItem = 1;
+            }
+            
+            const infoSize = Module.ccall("getInfo", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number"], [codeBinSize, sectionId, infoRaw, infoItem, infoItemRaw, infoCode, decompType, decompBranch, decompOpts, itemIndex]);
+            const infoPtr = Module._malloc(infoSize + 1);
+            Module.ccall("getInfoText", null, ["number"], [infoPtr]);
+            const infoText = Module.UTF8ToString(infoPtr);
+            Module._free(infoPtr);
+            return infoText;
+        }
+
+        function sectionAllItems(sec, newState)
+        {
+            const n = sectionItemState[printWasmId(sec, 0, "count")];
+            let n1 = 0;
+            let n2 = 0;
+            switch (newState)
+            {
+                case 1:
+                    n1 = 1;
+                    break;
+                case 2:
+                    n2 = 1;
+                    break;
+            }
+            for (let i = 0; i < n; i++)
+            {
+                sectionItemState[printWasmId(sec, i, "info")] = n1;
+                sectionItemState[printWasmId(sec, i, "Raw data")] = n2;
+            }
+            printWasmInfoRefresh(sec)
+        }
+
+        function escapeHtml(str) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&apos;'
+            };
+            return str.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        function unescapeHtml(str) {
+            const map = {
+                '&amp;': '&',
+                '&lt;': '<',
+                '&gt;': '>',
+                '&quot;': '"',
+                '&apos;': "'"
+            };
+            return str.replace(/&amp;|&lt;|&gt;|&quot;|&#39;/g, function(m) { return map[m]; });
+        }
+
+
+        function sectionItem(sec, idx)
+        {
+            let n = 5;
+            while (n > 0)
+            {
+                if (sectionItemX(sec, idx))
+                {
+                    n--;
+                }
+                else
+                {
+                    n = 0;
+                }
+            }
+            return false;
+        }
+
+        function sectionItemX(sec, idx)
+        {
+            const id = printWasmId((sec % 100), idx, "");
+            const spanid = "section" + (sec % 100) + "item" + idx;
+            let autoRepeat = false;
+            
+            // Section info/code, raw binary
+            if ((sec >= 100) && (sec <= 199))
+            {
+                let N1 = sectionItemState[id + "info"];
+                let N2 = sectionItemState[id + "Raw data"];
+                
+                switch (N1 * 10 + N2)
+                {
+                    case 0:
+                        N1 = 1;
+                        N2 = 0;
+                        break;
+                    case 10:
+                        N1 = 0;
+                        N2 = 1;
+                        break;
+                    case 1:
+                        N1 = 0;
+                        N2 = 0;
+                        break;
+                }
+                
+                sectionItemState[id + "info"] = N1;
+                sectionItemState[id + "Raw data"] = N2;
+            }
+            
+            if ((sec >= 200) && (sec <= 299))
+            {
+            }
+            
+            // Disassembled code
+            if ((sec >= 300) && (sec <= 399))
+            {
+                let N = sectionItemState[id + "decomp1"];
+                N = (N + 1) % 2;
+                sectionItemState[id + "decomp1"] = N;
+            }
+            
+            // Decompiled code
+            if ((sec >= 400) && (sec <= 499))
+            {
+                autoRepeat = true;
+                let N = sectionItemState[id + "decomp2"];
+                N = (N + 1) % 5;
+                sectionItemState[id + "decomp2"] = N;
+            }
+            
+            // Bloop without jumps
+            if ((sec >= 500) && (sec <= 599))
+            {
+                let N = sectionItemState[id + "decomp3"];
+                if (N > 0)
+                {
+                    N = 0;
+                }
+                else
+                {
+                    N = 2;
+                }
+                sectionItemState[id + "decomp3"] = N;
+            }
+
+            // Bloop with jumps
+            if ((sec >= 600) && (sec <= 699))
+            {
+                let N = sectionItemState[id + "decomp3"];
+                N = (N + 1) % 3;
+                sectionItemState[id + "decomp3"] = N;
+            }
+
+            const codeString = printWasmGetText(sec % 100, idx);
+            const codeSpan = document.getElementById(spanid);
+
+            if (codeSpan)
+            {
+                const codeString0 = codeSpan.innerHTML;
+                if (unescapeHtml(codeString0) == unescapeHtml(codeString))
+                {
+                    return true;
+                }
+                codeSpan.innerHTML = codeString;
+            }
+
+            return false;
+        }
+        
+        function printWasmInfoPrepare()
+        {
+            infoState["00"] = true;
+            infoState["01"] = true;
+            infoState["02"] = true;
+            infoState["03"] = true;
+            infoState["04"] = true;
+            infoState["05"] = true;
+            infoState["06"] = true;
+            infoState["07"] = true;
+            infoState["08"] = true;
+            infoState["09"] = true;
+            infoState["10"] = true;
+            infoState["11"] = true;
+            infoState["12"] = true;
+            infoState["13"] = true;
+            infoState["99"] = true;
+            
+            infoShowHide("00");
+            infoShowHide("01");
+            infoShowHide("02");
+            infoShowHide("03");
+            infoShowHide("04");
+            infoShowHide("05");
+            infoShowHide("06");
+            infoShowHide("07");
+            infoShowHide("08");
+            infoShowHide("09");
+            infoShowHide("10");
+            infoShowHide("11");
+            infoShowHide("12");
+            infoShowHide("13");
+            infoShowHide("99");
+
+            sectionItemState = {};
+
+            document.getElementById("wasmInfo99").innerHTML = printWasmGetText(99, -1);
+            document.getElementById("wasmInfo00").innerHTML = printWasmGetText( 0, -1);
+            document.getElementById("wasmInfo01").innerHTML = printWasmGetText( 1, -1);
+            document.getElementById("wasmInfo02").innerHTML = printWasmGetText( 2, -1);
+            document.getElementById("wasmInfo03").innerHTML = printWasmGetText( 3, -1);
+            document.getElementById("wasmInfo04").innerHTML = printWasmGetText( 4, -1);
+            document.getElementById("wasmInfo05").innerHTML = printWasmGetText( 5, -1);
+            document.getElementById("wasmInfo06").innerHTML = printWasmGetText( 6, -1);
+            document.getElementById("wasmInfo07").innerHTML = printWasmGetText( 7, -1);
+            document.getElementById("wasmInfo08").innerHTML = printWasmGetText( 8, -1);
+            document.getElementById("wasmInfo09").innerHTML = printWasmGetText( 9, -1);
+            document.getElementById("wasmInfo10").innerHTML = printWasmGetText(10, -1);
+            document.getElementById("wasmInfo11").innerHTML = printWasmGetText(11, -1);
+            document.getElementById("wasmInfo12").innerHTML = printWasmGetText(12, -1);
+            document.getElementById("wasmInfo13").innerHTML = printWasmGetText(13, -1);
+
+            for (let i = 0; i <= 13; i++)
+            {
+                let sectionCount = parseInt(printWasmGetText(i, -2));
+                sectionItemState[printWasmId(i, 0, "count")] = sectionCount;
+                for (let ii = 0; ii < sectionCount; ii++)
+                {
+                    sectionItemState[printWasmId(i, ii, "info")] = 0;
+                    sectionItemState[printWasmId(i, ii, "Raw data")] = 0;
+                    sectionItemState[printWasmId(i, ii, "decomp1")] = 0;
+                    sectionItemState[printWasmId(i, ii, "decomp2")] = 0;
+                    sectionItemState[printWasmId(i, ii, "decomp3")] = 0;
+                }
+            }
+            //printWasmInfoRefresh(-1);
+        }
+
+
+        let printWasmInfoRefresh_i;
+        let printWasmInfoRefresh_i_N;
+        let printWasmInfoRefresh_ii;
+        let printWasmInfoRefresh_ii_N;
+
+        function printWasmInfoRefresh(secN)
+        {
+            if (secN < 0)
+            {
+                printWasmInfoRefresh_i = -1;
+                printWasmInfoRefresh_i_N = 14;
+            }
+            else
+            {
+                printWasmInfoRefresh_i = secN - 1;
+                printWasmInfoRefresh_i_N = secN + 1;
+            }
+            printWasmInfoRefresh_ii = 1;
+            printWasmInfoRefresh_ii_N = 0;
+        
+            /*for (let i = 0; i <= 13; i++)
+            {
+                let sectionCount = sectionItemState[printWasmId(i, 0, "count")];
+                for (let ii = 0; ii < sectionCount; ii++)
+                {
+                    sectionItem(i, ii);
+                }
+            }*/
+            
+            printWasmInfoRefreshWorkX();
+        }
+
+        function printWasmInfoRefreshWorkX()
+        {
+            setTimeout(printWasmInfoRefreshWork, 0);
+        }
+
+        function printWasmInfoRefreshWork()
+        {
+            if (printWasmInfoRefresh_ii >= printWasmInfoRefresh_ii_N)
+            {
+                printWasmInfoRefresh_i++;
+                if (printWasmInfoRefresh_i == printWasmInfoRefresh_i_N)
+                {
+                    return;
+                }
+                printWasmInfoRefresh_ii = 0;
+                printWasmInfoRefresh_ii_N = sectionItemState[printWasmId(printWasmInfoRefresh_i, 0, "count")];
+            }
+
+            //console.log("<<<< " + printWasmInfoRefresh_i + "  ~~~~" + printWasmInfoRefresh_ii_N);
+            if (printWasmInfoRefresh_ii < printWasmInfoRefresh_ii_N)
+            {
+                //console.log("<<<< " + printWasmInfoRefresh_i + "  " + printWasmInfoRefresh_ii + "/" + printWasmInfoRefresh_ii_N);
+                sectionItem(printWasmInfoRefresh_i, printWasmInfoRefresh_ii);
+                //console.log(">>>> " + printWasmInfoRefresh_i + "  " + printWasmInfoRefresh_ii + "/" + printWasmInfoRefresh_ii_N);
+            }
+            printWasmInfoRefresh_ii++;
+
+            printWasmInfoRefreshWorkX();
+        }
+
+
         function printWasmInfo()
         {
-            let s = parseInt(document.getElementById("binSize").value);
-            if (isNaN(s))
-            {
-                s = 8;
-            }
-            if (s < 0) s = 8;
-            const t1 = document.getElementById("infoRaw").checked ? 1 : 0;
-            const t2 = document.getElementById("infoItem").checked ? 1 : 0;
-            const t3 = document.getElementById("infoItemRaw").checked ? 1 : 0;
-            const t4 = document.getElementById("infoCode").checked ? 1 : 0;
-            const t5 = document.getElementById("codeType").selectedIndex;
-            const t6 = document.getElementById("codeBranch").selectedIndex;
-            let t7 = document.getElementById("decompFlow").selectedIndex;
-            if (document.getElementById("decompDecl").checked) t7 += 4;
-            if (document.getElementById("decompHung").checked) t7 += 8;
-            if (document.getElementById("decompStack").checked) t7 += 16;
-            
-            document.getElementById("wasmInfo99").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s, 99, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo00").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s,  0, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo01").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s,  1, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo02").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s,  2, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo03").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s,  3, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo04").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s,  4, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo05").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s,  5, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo06").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s,  6, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo07").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s,  7, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo08").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s,  8, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo09").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s,  9, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo10").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s, 10, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo11").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s, 11, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo12").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s, 12, t1, t2, t3, t4, t5, t6, t7]);
-            document.getElementById("wasmInfo13").innerText = Module.ccall("getInfo", "string", ["number", "number", "number", "number", "number", "number", "number", "number"], [s, 13, t1, t2, t3, t4, t5, t6, t7]);
             sectionDisplay();
         }
     

@@ -1,5 +1,148 @@
 #include "filestructure.h"
 
+void fileStructure::parseCustom(sectionInfo &sectionInfo__, int idx)
+{
+    int ptr = sectionInfo__.DataAddr;
+    sectionInfo__.StartIdx = leb128u(ptr) * 100;
+    sectionInfo__.StartIdx += leb128Size;
+    ptr += leb128Size;
+    int nameLength = (sectionInfo__.StartIdx / 100);
+    int nameNumSie = (sectionInfo__.StartIdx % 100);
+
+    bool isName = false;
+    if ((nameLength == 4) && (nameNumSie == 1))
+    {
+        if ((raw[ptr + 0] == 'n') && (raw[ptr + 1] == 'a') && (raw[ptr + 2] == 'm') && (raw[ptr + 3] == 'e'))
+        {
+            isName = true;
+        }
+    }
+
+    sectionSubInfo sectionSubInfo__;
+    sectionSubInfo__.ItemAddr = sectionInfo__.DataAddr;
+    sectionSubInfo__.Addr = sectionInfo__.Addr;
+    sectionSubInfo__.Index = idx;
+    sectionSubInfo__.ItemSize = sectionInfo__.DataSize;
+    sectionSubInfo__._CodeAddr = sectionInfo__.DataAddr + nameNumSie + nameLength;
+    sectionSubInfo__._CodeSize = sectionInfo__.DataSize - nameNumSie - nameLength;
+    ptr += nameLength;
+
+
+    if (isName && wasmDecompiler_.useTags)
+    {
+        int ptrMax = sectionInfo__.DataAddr + sectionSubInfo__.ItemSize;
+        bool isValid = true;
+        int lastItems = 0;
+        while (ptr < ptrMax)
+        {
+            int metaType = raw[ptr];
+            ptr++;
+            int metaLength = leb128u(ptr);
+            ptr += leb128Size;
+            int ptrx = ptr;
+            switch (metaType)
+            {
+                case 0: // Module
+                    {
+                        std::string metaName = leb128string(ptrx);
+                        ptrx += leb128Size;
+                        if (isValid)
+                        {
+                            wasmDecompiler_.metaTagAdd(0, 0, 0, metaName);
+                            lastItems++;
+                        }
+                    }
+                    break;
+                case 1: // Function
+                case 4: // Type
+                case 5: // Table
+                case 6: // Memory
+                case 7: // Global
+                case 8: // Element
+                case 9: // Data
+                case 11: // Tag
+                    {
+                        int metaListLength = leb128u(ptrx);
+                        ptrx += leb128Size;
+                        for (int i = 0; i < metaListLength; i++)
+                        {
+                            int metaItemIdx = leb128u(ptrx);
+                            ptrx += leb128Size;
+                            std::string metaItemStr = leb128string(ptrx);
+                            ptrx += leb128Size;
+                            if (isValid)
+                            {
+                                wasmDecompiler_.metaTagAdd(metaType, metaItemIdx, 0, metaItemStr);
+                                lastItems++;
+                            }
+                        }
+                    }
+                    break;
+                case 2: // Local
+                    {
+                        int metaListLength = leb128u(ptrx);
+                        ptrx += leb128Size;
+                        for (int i = 0; i < metaListLength; i++)
+                        {
+                            int metaFunctionIdx = leb128u(ptrx);
+                            ptrx += leb128Size;
+
+                            int metaLocalCount = leb128u(ptrx);
+                            ptrx += leb128Size;
+                            for (int ii = 0; ii < metaLocalCount; ii++)
+                            {
+                                int metaVarIdx = leb128u(ptrx);
+                                ptrx += leb128Size;
+
+                                std::string metaVarStr = leb128string(ptrx);
+                                ptrx += leb128Size;
+                                if (isValid)
+                                {
+                                    wasmDecompiler_.metaTagAdd(metaType, metaFunctionIdx, metaVarIdx, metaVarStr);
+                                    lastItems++;
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case 3: // Label
+                    {
+                        ptr += metaLength;
+                    }
+                    break;
+                case 10: // Field
+                    {
+                        ptr += metaLength;
+                    }
+                    break;
+                default:
+                    {
+                        isValid = false;
+                    }
+                    break;
+            }
+            if (ptrx != (ptr + metaLength))
+            {
+                isValid = false;
+            }
+
+            ptr += metaLength;
+            if (ptr > ptrMax)
+            {
+                isValid = false;
+            }
+        }
+        if (!isValid)
+        {
+            wasmDecompiler_.metaTagRemoveLast(lastItems);
+        }
+    }
+
+    sectionSubInfo_.push_back(sectionSubInfo__);
+
+    sectionInfo__.ParseStatus = 1;
+}
+
 void fileStructure::parseType(sectionInfo &sectionInfo__)
 {
     int ptr = sectionInfo__.SubAddr;
@@ -9,21 +152,76 @@ void fileStructure::parseType(sectionInfo &sectionInfo__)
         sectionSubInfo__.ItemAddr = ptr;
         sectionSubInfo__.Addr = sectionInfo__.Addr;
         sectionSubInfo__.Index = i;
-        ptr++;
 
-        int vecLen = leb128u(ptr);
-        ptr += leb128Size;
-        for (int ii = 0; ii < vecLen; ii++)
+        switch (raw[ptr])
         {
-            sectionSubInfo__._TypeParams.push_back(raw[ptr]);
-            ptr++;
-        }
-        vecLen = leb128u(ptr);
-        ptr += leb128Size;
-        for (int ii = 0; ii < vecLen; ii++)
-        {
-            sectionSubInfo__._TypeReturn.push_back(raw[ptr]);
-            ptr++;
+            case 0x60: // functype
+                {
+                    ptr++;
+
+                    int vecLen = leb128u(ptr);
+                    ptr += leb128Size;
+                    for (int ii = 0; ii < vecLen; ii++)
+                    {
+                        sectionSubInfo__._TypeParams.push_back(raw[ptr]);
+                        ptr++;
+                    }
+                    vecLen = leb128u(ptr);
+                    ptr += leb128Size;
+                    for (int ii = 0; ii < vecLen; ii++)
+                    {
+                        sectionSubInfo__._TypeReturn.push_back(raw[ptr]);
+                        ptr++;
+                    }
+                }
+                break;
+            case 0x5F: // structtype
+                {
+                    ptr++;
+
+                    int vecLen = leb128u(ptr);
+                    ptr += leb128Size;
+
+                    sectionSubInfo__._TypeParams.push_back(0);
+                    sectionSubInfo__._TypeParams.push_back(wasmDecompiler_.valueTypeNumber("structref"));
+
+                    for (int ii = 0; ii < vecLen; ii++)
+                    {
+                        int t = raw[ptr];
+                        ptr++;
+
+                        if (raw[ptr] == 1)
+                        {
+                            sectionSubInfo__._TypeReturn.push_back(t);
+                        }
+                        else
+                        {
+                            sectionSubInfo__._TypeReturn.push_back(256 + t);
+                        }
+                        ptr++;
+                    }
+                }
+                break;
+            case 0x5E: // arraytype
+                {
+                    ptr++;
+                    sectionSubInfo__._TypeParams.push_back(0);
+                    sectionSubInfo__._TypeParams.push_back(wasmDecompiler_.valueTypeNumber("arrayref"));
+
+                    int t = raw[ptr];
+                    ptr++;
+
+                    if (raw[ptr] == 1)
+                    {
+                        sectionSubInfo__._TypeReturn.push_back(t);
+                    }
+                    else
+                    {
+                        sectionSubInfo__._TypeReturn.push_back(256 + t);
+                    }
+                    ptr++;
+                }
+                break;
         }
 
         sectionSubInfo__.ItemSize = ptr - sectionSubInfo__.ItemAddr;
@@ -74,6 +272,22 @@ void fileStructure::parseExport(sectionInfo &sectionInfo__)
         sectionSubInfo__._FunctionIdx = leb128u(ptr);
         ptr += leb128Size;
         sectionSubInfo__.ItemSize = ptr - sectionSubInfo__.ItemAddr;
+        switch (sectionSubInfo__._FunctionTag)
+        {
+            case 0: // Function
+                wasmDecompiler_.metaTagAdd(201, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
+                break;
+            case 1: // Table
+                wasmDecompiler_.metaTagAdd(205, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
+                break;
+            case 2: // Memory
+                wasmDecompiler_.metaTagAdd(206, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
+                break;
+            case 3: // Global
+                wasmDecompiler_.metaTagAdd(207, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
+                break;
+        }
+
         sectionSubInfo_.push_back(sectionSubInfo__);
     }
     sectionInfo__.ParseStatus = (sectionInfo__.Size == (ptr - sectionInfo__.Addr)) ? 1 : 0;
@@ -109,9 +323,9 @@ void fileStructure::parseImport(sectionInfo &sectionInfo__)
             vecLen--;
         }
 
-        if ((ModName.size() > 0))
+        if ((!ModName.empty()))
         {
-            if (sectionSubInfo__._FunctionName.size() > 0)
+            if (!sectionSubInfo__._FunctionName.empty())
             {
                 sectionSubInfo__._FunctionName = ModName + "." + sectionSubInfo__._FunctionName;
             }
@@ -130,6 +344,7 @@ void fileStructure::parseImport(sectionInfo &sectionInfo__)
                 sectionSubInfo__._CodeSize = leb128u(ptr);
                 ptr += leb128Size;
                 sectionSubInfo__._FunctionIdx = parseFunctionId;
+                wasmDecompiler_.metaTagAdd(101, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
                 parseFunctionId++;
                 break;
             case 0x01: // table
@@ -152,6 +367,7 @@ void fileStructure::parseImport(sectionInfo &sectionInfo__)
                     sectionSubInfo__._TypeReturn.push_back(-1);
                 }
                 sectionSubInfo__._FunctionIdx = parseTableId;
+                wasmDecompiler_.metaTagAdd(105, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
                 parseTableId++;
                 break;
             case 0x02: // memory
@@ -177,6 +393,7 @@ void fileStructure::parseImport(sectionInfo &sectionInfo__)
                 }
 
                 sectionSubInfo__._FunctionIdx = parseMemoId;
+                wasmDecompiler_.metaTagAdd(106, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
                 parseMemoId++;
                 break;
             case 0x03: // global
@@ -189,6 +406,7 @@ void fileStructure::parseImport(sectionInfo &sectionInfo__)
                 sectionSubInfo__._TypeReturn.push_back(raw[ptr]);
                 ptr++;
                 sectionSubInfo__._FunctionIdx = parseGlobalId;
+                wasmDecompiler_.metaTagAdd(107, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
                 parseGlobalId++;
                 break;
         }
@@ -215,15 +433,6 @@ void fileStructure::parseGlobal(sectionInfo &sectionInfo__)
         ptr++;
 
         parseInstructions(ptr, sectionSubInfo__, sectionSubInfo_.size(), 2);
-
-        // Dummy set global instruction
-        /*codeInstr codeInstr_;
-        codeInstr_.Addr = -1;
-        codeInstr_.Size = 0;
-        codeInstr_.Depth = 0;
-        codeInstr_.Opcode = 0x24;
-        codeInstr_.Param0 = std::to_string(sectionSubInfo__.Index);
-        sectionSubInfo__._CodeInstr.push_back(codeInstr_);*/
 
         for (int ii = 0; ii < sectionSubInfo__._CodeInstr.size(); ii++)
         {
@@ -475,12 +684,100 @@ void fileStructure::parseMemory(sectionInfo &sectionInfo__)
 
 void fileStructure::parseElement(sectionInfo &sectionInfo__)
 {
-    sectionInfo__.ParseStatus = 2;
+    int ptr = sectionInfo__.SubAddr;
+    for (int i = 0; i < sectionInfo__.SubCount; i++)
+    {
+        sectionSubInfo sectionSubInfo__;
+        sectionSubInfo__.ItemAddr = ptr;
+        sectionSubInfo__.Addr = ptr;
+        sectionSubInfo__.Index = i;
+
+        int segmentType = raw[ptr];
+
+        sectionSubInfo__._FunctionTag = segmentType;
+
+        ptr++;
+
+        switch (segmentType)
+        {
+            case 0: // active
+            case 2: // active with table index
+                {
+                    if (segmentType == 2)
+                    {
+                        // Table number
+                        sectionSubInfo__._TypeParams.push_back(leb128u(ptr));
+                        ptr += leb128Size;
+                    }
+                    else
+                    {
+                        sectionSubInfo__._TypeParams.push_back(0);
+                    }
+
+                    parseInstructions(ptr, sectionSubInfo__, sectionSubInfo_.size(), 3);
+                    for (int ii = 0; ii < sectionSubInfo__._CodeInstr.size(); ii++)
+                    {
+                        ptr += sectionSubInfo__._CodeInstr[ii].Size;
+                    }
+
+                    if (segmentType == 2)
+                    {
+                        ptr++;
+                    }
+                }
+                break;
+            case 1: // passive
+            case 3: // declare
+                {
+                    // Dummy table number
+                    sectionSubInfo__._TypeParams.push_back(0);
+
+                    // ???
+                    ptr++;
+                }
+                break;
+        }
+
+        switch (segmentType)
+        {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+                {
+                    int funcVector = leb128u(ptr);
+                    ptr += leb128Size;
+                    for (int ii = 0; ii < funcVector; ii++)
+                    {
+                        sectionSubInfo__._TypeParams.push_back(ptr);
+                        sectionSubInfo__._TypeParams.push_back(leb128u(ptr));
+                        ptr += leb128Size;
+                    }
+                    sectionSubInfo__._TypeParams.push_back(ptr);
+                }
+                break;
+        }
+
+
+
+
+
+        sectionSubInfo__.ItemSize = ptr - sectionSubInfo__.ItemAddr;
+        sectionSubInfo_.push_back(sectionSubInfo__);
+    }
+    sectionInfo__.ParseStatus = (sectionInfo__.Size == (ptr - sectionInfo__.Addr)) ? 1 : 0;
 }
 
 
 void fileStructure::parse(uchar * raw_, int rawSize_)
 {
+    if (rawSize_ < 0)
+    {
+        rawSize_ = 0 - rawSize_;
+        wasmDecompiler_.useHtml = false;
+    }
+
+    wasmDecompiler_.metaTagClear();
     wasmDecompiler_.codeInstrInfoLength = 0;
     raw = raw_;
     rawSize = rawSize_;
@@ -499,11 +796,13 @@ void fileStructure::parse(uchar * raw_, int rawSize_)
     sectionInfo__.DataAddr = 0;
     sectionInfo__.DataSize = 8;
     sectionInfo_.push_back(sectionInfo__);
-    int raw_ptr = 8;
     parseFunctionId = 0;
     parseTableId = 0;
     parseMemoId = 0;
     parseGlobalId = 0;
+
+    int raw_ptr = 8;
+    int customIdx = -1;
     while (raw_ptr < rawSize)
     {
         int S = leb128u(raw_ptr + 1);
@@ -519,6 +818,17 @@ void fileStructure::parse(uchar * raw_, int rawSize_)
         raw_ptr = raw_ptr + S + leb128Size + 1;
         switch (sectionInfo__.Id)
         {
+            case 0:
+                {
+                    // Fake one subsection for "Custom" section
+                    customIdx++;
+                    int SectionSubCount = 1;
+                    sectionInfo__.SubCount = SectionSubCount;
+                    sectionInfo__.SubAddr = raw_ptr_;
+                    sectionInfo__.SubIdx1 = sectionSubInfo_.size();
+                    sectionInfo__.SubIdx2 = sectionSubInfo_.size() + SectionSubCount;
+                }
+                break;
             case 1:
             case 2:
             case 3:
@@ -538,12 +848,12 @@ void fileStructure::parse(uchar * raw_, int rawSize_)
                     sectionInfo__.SubIdx1 = sectionSubInfo_.size();
                     sectionInfo__.SubIdx2 = sectionSubInfo_.size() + SectionSubCount;
                 }
-
                 break;
         }
 
         switch (sectionInfo__.Id)
         {
+            case 0: parseCustom(sectionInfo__, customIdx); break;
             case 1: parseType(sectionInfo__); break;
             case 2: parseImport(sectionInfo__); break;
             case 3: parseFunction(sectionInfo__); break;
@@ -567,4 +877,6 @@ void fileStructure::parse(uchar * raw_, int rawSize_)
             sectionInfo_[sectionInfo_.size() - 1] = sectionInfo__;
         }
     }
+
+    wasmDecompiler_.metaTagValidateNames();
 }

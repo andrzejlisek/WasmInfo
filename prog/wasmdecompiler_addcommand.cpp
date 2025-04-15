@@ -2,90 +2,107 @@
 
 void wasmDecompiler::addCommandStackDummy(int valueType)
 {
-    unsigned char * raw0 = new unsigned char[10];
-    raw0[0] = 0;
-    raw0[1] = 0;
-    raw0[2] = 0;
-    raw0[3] = 0;
-    raw0[4] = 0;
-    raw0[5] = 0;
-    raw0[6] = 0;
-    raw0[7] = 0;
-    raw0[8] = 0;
-    raw0[9] = 0;
+    int base = dummyRaw.size();
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
     int raw0Size = 1;
     std::string raw0Par0 = "";
 
     switch (valueType)
     {
         case fieldType_i32:
-            raw0[0] = 0x41;
+            dummyRaw[base + 0] = 0x41;
             raw0Size = 2;
             raw0Par0 = dataFieldDictionarySet("0", fieldType_i32, "const", 0);
             break;
         case fieldType_i64:
-            raw0[0] = 0x42;
+            dummyRaw[base + 0] = 0x42;
             raw0Size = 2;
             raw0Par0 = dataFieldDictionarySet("0", fieldType_i64, "const", 0);
             break;
         case fieldType_f32:
-            raw0[0] = 0x43;
+            dummyRaw[base + 0] = 0x43;
             raw0Size = 5;
             raw0Par0 = dataFieldDictionarySet("0.0", fieldType_f32, "const", 0);
             break;
         case fieldType_f64:
-            raw0[0] = 0x44;
+            dummyRaw[base + 0] = 0x44;
             raw0Size = 9;
             raw0Par0 = dataFieldDictionarySet("0.0", fieldType_f64, "const", 0);
             break;
         case fieldType_v128:
-            raw0[0] = 0xFD;
-            raw0[1] = 0x0C;
+            dummyRaw[base + 0] = 0xFD;
+            dummyRaw[base + 1] = 0x0C;
             raw0Size = 10;
             raw0Par0 = "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0";
             break;
         case -1: // Simulate "drop" to remove from stack
-            raw0[0] = 0x1A;
+            dummyRaw[base + 0] = 0x1A;
             raw0Size = 1;
             raw0Par0 = "";
             break;
         case -2: // Simulate "end"
-            raw0[0] = 0x0B;
+            dummyRaw[base + 0] = 0x0B;
             raw0Size = 1;
             raw0Par0 = "";
             break;
         case -3: // Simulate "return"
-            raw0[0] = 0x0F;
+            dummyRaw[base + 0] = 0x0F;
             raw0Size = 1;
             raw0Par0 = "";
             break;
     }
 
-    addCommand(raw0, 0, raw0Size, raw0Par0, "", "", "x", "x", 0, 0, 0);
-
-    delete[] raw0;
+    addCommand(dummyRaw.data(), base, raw0Size, raw0Par0, "", "", "x", "x", 0, 0, 0);
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
 }
 
 void wasmDecompiler::addCommand(std::string instr, std::string par0, std::string par1, std::string par2, std::string stackI__, std::string stackO__, int stackP__, int stackR__, int stackS__)
 {
-    unsigned char * raw0 = new unsigned char[10];
-    raw0[0] = 0;
-    raw0[1] = 0;
-    raw0[2] = 0;
-    raw0[3] = 0;
-    raw0[4] = 0;
-    raw0[5] = 0;
-    raw0[6] = 0;
-    raw0[7] = 0;
-    raw0[8] = 0;
-    raw0[9] = 0;
+    int base = dummyRaw.size();
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
+    dummyRaw.push_back(0);
     int raw0Size = instr.size() / 2;
     for (int i = 0; i < raw0Size; i++)
     {
-        raw0[i] = hex::HexToInt(instr.substr(i << 1, 2));
+        dummyRaw[base + i] = hex::HexToInt(instr.substr(i << 1, 2));
     }
-    addCommand(raw0, 0, raw0Size, par0, par1, par2, stackI__, stackO__, stackP__, stackR__, stackS__);
-    delete[] raw0;
+    addCommand(dummyRaw.data(), base, raw0Size, par0, par1, par2, stackI__, stackO__, stackP__, stackR__, stackS__);
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
+    dummyRaw.pop_back();
 }
 
 void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::string par0, std::string par1, std::string par2, std::string stackI__, std::string stackO__, int stackP__, int stackR__, int stackS__)
@@ -104,36 +121,72 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
         if (funcName != "")
         {
             std::string s = "";
-            int returnCount = 0;
-            for (int i = 0; i < dataFieldDictionary.size(); i++)
+
+            switch (funcName[0])
             {
-                if (dataFieldDictionary[i].fieldCategory == "return")
-                {
-                    if (returnCount > 0)
+                case '*':
+                    s = funcName.substr(1);
+                    break;
+                case '+':
+                case '-':
+                    int returnCount = 0;
+                    for (int i = 0; i < dataFieldDictionary.size(); i++)
                     {
-                        s = s + "_";
+                        if (dataFieldDictionary[i].fieldCategory == "return")
+                        {
+                            if (returnCount > 0)
+                            {
+                                s = s + "_";
+                            }
+                            s = s + valueTypeName(dataFieldDictionary[i].fieldType);
+                            returnCount++;
+                        }
                     }
-                    s = s + valueTypeName(dataFieldDictionary[i].fieldType);
-                    returnCount++;
-                }
-            }
-            if (returnCount == 0) s = "void";
-            s = s + " " + funcName + "(";
-            int paramCount = 0;
-            for (int i = 0; i < dataFieldDictionary.size(); i++)
-            {
-                if ((dataFieldDictionary[i].fieldCategory == "local") && (dataFieldDictionary[i].isParam))
-                {
-                    if (paramCount > 0)
+                    if (returnCount == 0) s = "void";
+                    s = s + " " + hex::StringGetParam(funcName, 2, '|') + "(";
+                    int paramCount = 0;
+                    for (int i = 0; i < dataFieldDictionary.size(); i++)
                     {
-                        s = s + ", ";
+                        if ((dataFieldDictionary[i].fieldCategory == "local") && (dataFieldDictionary[i].isParam))
+                        {
+                            if (paramCount > 0)
+                            {
+                                s = s + ", ";
+                            }
+                            s = s + valueTypeName(dataFieldDictionary[i].fieldType) + " " + dataFieldDictionaryDisplay(dataFieldDictionary[i].fieldId);
+                            paramCount++;
+                        }
                     }
-                    s = s + valueTypeName(dataFieldDictionary[i].fieldType) + " " + dataFieldDictionaryDisplay(dataFieldDictionary[i].fieldId);
-                    paramCount++;
-                }
+                    //if (paramCount == 0) s = s + "void";
+                    if (funcName[0] == '-')
+                    {
+                        s = s + ");";
+                    }
+                    else
+                    {
+                        s = s + ")";
+                    }
+                    s = hex::StringGetParam(funcName.substr(1), 0, '|') + s + hex::StringGetParam(funcName, 1, '|');
+
+                    if ((funcName[0] == '+') && (addCommandBloop > 0))
+                    {
+                        std::string linkPrefix = hex::StringGetParam(funcName.substr(1), 0, '|');
+                        std::string linkSuffix = hex::StringGetParam(funcName.substr(1), 1, '|');
+                        if (addCommandBloop == 1)
+                        {
+                            linkPrefix = hex::StringFindReplaceFirst(linkPrefix, "(410", "(510");
+                            linkSuffix = hex::StringFindReplaceFirst(linkSuffix, "(410", "(510");
+                        }
+                        if (addCommandBloop == 2)
+                        {
+                            linkPrefix = hex::StringFindReplaceFirst(linkPrefix, "(410", "(610");
+                            linkSuffix = hex::StringFindReplaceFirst(linkSuffix, "(410", "(610");
+                        }
+                        s = s + "  " + linkPrefix + "/*bloop*/" + linkSuffix;
+                    }
+                    break;
             }
-            if (paramCount == 0) s = s + "void";
-            s = s + ")";
+
             WDF.additionalInstr(0, "", s, 0);
         }
         WDF.additionalInstr(0, "", "{", 0);
@@ -235,7 +288,7 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
 
     if (decompOptStackSimplify)
     {
-        if (!decompOptFold)
+        //if (!decompOptFold)
         {
             stackSimplifiedP = true;
         }

@@ -8,7 +8,7 @@ bool fileStructure::isCodeGood(sectionSubInfo &sectionSubInfo__)
         {
             return false;
         }
-        if (sectionSubInfo__._CodeInstr[sectionSubInfo__._CodeInstr.size() - 1].errorMsg.size() > 0)
+        if (!sectionSubInfo__._CodeInstr[sectionSubInfo__._CodeInstr.size() - 1].errorMsg.empty())
         {
             return false;
         }
@@ -20,7 +20,7 @@ std::string fileStructure::valueTypeNameEx(int valueType)
 {
     bool isNum = false;
     if (valueType < 0) { valueType = 0 - valueType; isNum = true; }
-    if (valueType < 0x40)
+    if (!wasmDecompiler_.valueTypeIsStandard(valueType))
     {
         for (int i = 0; i < sectionInfo_.size(); i++)
         {
@@ -110,12 +110,11 @@ std::string fileStructure::instructionText(codeInstr codeInstr_, int fidx)
     text = hex::StringFindReplace(text, "[~2~]", codeInstr_.Param2);
     if (hex::StringIndexOf(text, "[#0#]") > 0)
     {
-        text = hex::StringFindReplace(text, "[#0#]", getFunctionNameById(-1, atoi(codeInstr_.Param0.c_str()), 0));
+        text = hex::StringFindReplace(text, "[#0#]", getFunctionNameById(getFunctionNameByIdMode::funcCode, getFunctionNameByIdNumber::whole, atoi(codeInstr_.Param0.c_str())));
     }
     if (hex::StringIndexOf(text, "[@0@]") > 0)
     {
-        int dummy = 0;
-        text = hex::StringFindReplace(text, "[@0@]", getFunctionType(atoi(codeInstr_.Param0.c_str()), "{~}", dummy));
+        text = hex::StringFindReplace(text, "[@0@]", getFunctionNameById(getFunctionNameByIdMode::funcCode, getFunctionNameByIdNumber::type, atoi(codeInstr_.Param0.c_str())));
     }
 
     if ((hex::StringIndexOf(text, "[$0g]") > 0) || (hex::StringIndexOf(text, "[$0gg]") > 0))
@@ -246,7 +245,7 @@ void fileStructure::loadNames(int setType, std::string nameText)
             wasmDecompiler_.codeDef_[setType][i].stackResult = "0";
         }
 
-        /*if (wasmDecompiler_.codeDef_[setType][i].nameAsm.size() > 0)
+        /*if (!wasmDecompiler_.codeDef_[setType][i].nameAsm.empty())
         {
             if (wasmDecompiler_.codeDef_[setType][i].stackResultType < 0)
             {

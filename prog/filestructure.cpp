@@ -24,26 +24,94 @@ uint fileStructure::leb128u(int ptr)
     return result;
 }
 
-sint fileStructure::leb128s(int ptr, int size)
+sllong fileStructure::leb128s(int ptr, int size)
 {
-    sint result = 0;
-    int shift = 0;
+    // Measure number length
     leb128Size = 0;
-    do
+    while (raw[ptr + leb128Size] & 0b10000000)
     {
-        result |= ((raw[ptr] & 0b01111111) << shift);
-        shift += 7;
-        ptr++;
         leb128Size++;
     }
-    while ((raw[ptr - 1] & 0b10000000));
+    leb128Size++;
 
-    if ((shift < size) && (raw[ptr - 1] & 0b01000000))
+
+    // Longer number - uses two 64-bit numbers as teporary
+    if (leb128Size >= 8)
     {
-        result |= (~0 << shift);
-    }
+        sllong result_h = 0;
+        sllong result_l = 0;
+        int shift = 0;
 
-    return result;
+        int bits_l = 56;
+        int bits_h = 63 - bits_l;
+        do
+        {
+            if (shift < bits_l)
+            {
+                result_l |= ((sllong)(raw[ptr] & 0b01111111) << shift);
+            }
+            else
+            {
+                result_h |= ((sllong)(raw[ptr] & 0b01111111) << (shift - bits_l));
+            }
+            shift += 7;
+            ptr++;
+        }
+        while ((raw[ptr - 1] & 0b10000000));
+
+        if ((shift < size) && (raw[ptr - 1] & 0b01000000))
+        {
+            if (shift < bits_l)
+            {
+                result_l |= (~0ull << shift);
+                result_h |= (~0ull);
+            }
+            else
+            {
+                result_h |= (~0ull << (shift - bits_l));
+            }
+
+            if ((~result_h) >> bits_h)
+            {
+                return INT64_MIN;
+            }
+
+            result_h = (~result_h) & ((1ll << bits_h) - 1ll);
+            result_l = (~result_l) & ((1ll << bits_l) - 1ll);
+            return ~((result_h << bits_l) | result_l);
+        }
+        else
+        {
+            if (result_h >> bits_h)
+            {
+                return INT64_MAX;
+            }
+
+            result_h = result_h & ((1ll << bits_h) - 1ll);
+            result_l = result_l & ((1ll << bits_l) - 1ll);
+            return (result_h << bits_l) | result_l;
+        }
+    }
+    else
+    {
+        sllong result = 0;
+        int shift = 0;
+
+        do
+        {
+            result |= ((sllong)(raw[ptr] & 0b01111111) << shift);
+            shift += 7;
+            ptr++;
+        }
+        while ((raw[ptr - 1] & 0b10000000));
+
+        if ((shift < size) && (raw[ptr - 1] & 0b01000000))
+        {
+            result |= (~0ull << shift);
+        }
+
+        return result;
+    }
 }
 
 std::string fileStructure::f32tostr(int ptr)
@@ -104,4 +172,27 @@ sint fileStructure::ints(int ptr)
     union_raw[2] = raw[ptr + 2];
     union_raw[3] = raw[ptr + 3];
     return union_val;
+}
+
+std::string fileStructure::leb128string(int ptr)
+{
+    int ptrx = ptr;
+    int len = leb128u(ptr);
+    ptrx += leb128Size;
+    std::string s = "";
+    while (len > 0)
+    {
+        if ((raw[ptrx] >= 32) && (raw[ptrx] <= 126))
+        {
+            s.push_back(raw[ptrx]);
+        }
+        else
+        {
+            s.push_back('_');
+        }
+        ptrx++;
+        len--;
+    }
+    leb128Size = ptrx - ptr;
+    return s;
 }

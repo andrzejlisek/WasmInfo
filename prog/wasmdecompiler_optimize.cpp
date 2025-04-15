@@ -260,7 +260,7 @@ void wasmDecompiler::convertBlockToLabels()
         {
             if (WDF.params[i].get()->branchType == 9)
             {
-                if (labelGroupName.size() > 0)
+                if (!labelGroupName.empty())
                 {
                     labelName = WDF.params[i].get()->name;
                     labelNameX = labelName.substr(0, labelName.size() - 1);
