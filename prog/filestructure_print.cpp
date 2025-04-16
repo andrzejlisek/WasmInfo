@@ -89,6 +89,7 @@ void fileStructure::printCodeInstr(stringBuf &sb, std::vector<codeInstr> &codeIn
                 break;
             case 0x0C: // br
             case 0x0D: // br_if
+            case 0x0E: // br_table
                 wasmDecompiler_.addCommandBloop = 2;
                 break;
         }
@@ -264,12 +265,47 @@ void fileStructure::printCodeInstr(stringBuf &sb, std::vector<codeInstr> &codeIn
     }
 }
 
+int fileStructure::getTableType(int idx)
+{
+    int t = 0;
+    for (int i = 0; i < sectionInfo_.size(); i++)
+    {
+        if (sectionInfo_[i].Id == 2) // Import
+        {
+            for (int ii = sectionInfo_[i].SubIdx1; ii < sectionInfo_[i].SubIdx2; ii++)
+            {
+                if (sectionSubInfo_[ii]._FunctionTag == 1)
+                {
+                    if (t == idx)
+                    {
+                        return sectionSubInfo_[ii]._TypeReturn[0];
+                    }
+                    t++;
+                }
+            }
+        }
+
+        if (sectionInfo_[i].Id == 4) // Table
+        {
+            for (int ii = sectionInfo_[i].SubIdx1; ii < sectionInfo_[i].SubIdx2; ii++)
+            {
+                if (t == idx)
+                {
+                    return sectionSubInfo_[ii]._TypeReturn[0];
+                }
+                t++;
+            }
+        }
+    }
+    return 0;
+}
+
 int fileStructure::getVarTypeG(int idx)
 {
     int t = 0;
     for (int i = 0; i < sectionInfo_.size(); i++)
     {
-        if (sectionInfo_[i].Id == 2)
+        if (sectionInfo_[i].Id == 2) // Import
         {
             for (int ii = sectionInfo_[i].SubIdx1; ii < sectionInfo_[i].SubIdx2; ii++)
             {
@@ -291,7 +327,7 @@ int fileStructure::getVarTypeG(int idx)
             }
         }
 
-        if (sectionInfo_[i].Id == 6)
+        if (sectionInfo_[i].Id == 6) // Global
         {
             for (int ii = sectionInfo_[i].SubIdx1; ii < sectionInfo_[i].SubIdx2; ii++)
             {
@@ -775,7 +811,7 @@ void fileStructure::printCustom(stringBuf &sb, sectionInfo &sectionInfo__, bool 
                 if (isName && wasmDecompiler_.metaTagValid)
                 {
                     int metaIdx = 0;
-                    std::string metaItem = wasmDecompiler_.metaTagGetInfo(metaIdx);
+                    std::string metaItem = wasmDecompiler_.metaTagGetInfo(sectionSubInfo_[ii].Index, metaIdx);
                     while (metaItem != "`")
                     {
                         if (metaItem.size() > 1)
@@ -783,7 +819,7 @@ void fileStructure::printCustom(stringBuf &sb, sectionInfo &sectionInfo__, bool 
                             sb.append(metaItem).eol();
                         }
                         metaIdx++;
-                        metaItem = wasmDecompiler_.metaTagGetInfo(metaIdx);
+                        metaItem = wasmDecompiler_.metaTagGetInfo(sectionSubInfo_[ii].Index, metaIdx);
                     }
                 }
                 else
@@ -981,7 +1017,7 @@ void fileStructure::printTable(stringBuf &sb, sectionInfo &sectionInfo__, bool i
             {
                 sb.append(itemInfoText(4, sectionSubInfo_[ii]));
                 sb.append("table[").append(sectionSubInfo_[ii]._FunctionIdx).append("]");
-                sb.append(wasmDecompiler_.metaTagGetTempl(205, sectionSubInfo_[ii].Index, " ", ""));
+                sb.append(wasmDecompiler_.metaTagGetTempl(205, sectionSubInfo_[ii]._FunctionIdx, " ", ""));
                 sb.append(" ").append(sizeText(sectionSubInfo_[ii]._CodeLocalSize[0], sectionSubInfo_[ii]._CodeLocalSize[1]));
                 sb.append(" ").append(wasmDecompiler_.valueTypeName(sectionSubInfo_[ii]._TypeReturn[0]));
                 sb.eol();
@@ -1008,8 +1044,8 @@ void fileStructure::printMemory(stringBuf &sb, sectionInfo &sectionInfo__, bool 
             if (infoItem)
             {
                 sb.append(itemInfoText(5, sectionSubInfo_[ii]));
-                sb.append("memory[").append(sectionSubInfo_[ii].Index).append("]");
-                sb.append(wasmDecompiler_.metaTagGetTempl(206, sectionSubInfo_[ii].Index, " ", ""));
+                sb.append("memory[").append(sectionSubInfo_[ii]._FunctionIdx).append("]");
+                sb.append(wasmDecompiler_.metaTagGetTempl(206, sectionSubInfo_[ii]._FunctionIdx, " ", ""));
                 sb.append(" ").append(sizeText(sectionSubInfo_[ii]._CodeLocalSize[0], sectionSubInfo_[ii]._CodeLocalSize[1]));
                 sb.eol();
             }
@@ -1036,7 +1072,7 @@ void fileStructure::printGlobal(stringBuf &sb, sectionInfo &sectionInfo__, bool 
             {
                 sb.append(itemInfoText(6, sectionSubInfo_[ii]));
                 sb.append("global[").append(sectionSubInfo_[ii]._FunctionIdx).append("]");
-                sb.append(wasmDecompiler_.metaTagGetTempl(207, sectionSubInfo_[ii].Index, " ", ""));
+                sb.append(wasmDecompiler_.metaTagGetTempl(207, sectionSubInfo_[ii]._FunctionIdx, " ", ""));
                 if (!sectionSubInfo_[ii]._CodeGood)
                 {
                     sb.append(" !!! CODE PARSE ERROR !!!");
@@ -1107,7 +1143,7 @@ void fileStructure::printExport(stringBuf &sb, sectionInfo &sectionInfo__, bool 
                 {
                     printCodeText(sb, sectionSubInfo_[ii].ItemAddr, sectionSubInfo_[ii].ItemSize);
                     sb.append(codeInstrInfoBlank());
-                    sb.append(getFunctionNameById(getFunctionNameByIdMode::funcCode, getFunctionNameByIdNumber::internal, sectionSubInfo_[ii].Index)).append(";");
+                    sb.append(getFunctionNameById(getFunctionNameByIdMode::funcCode, getFunctionNameByIdNumber::whole, sectionSubInfo_[ii]._FunctionIdx)).append(";");
                     sb.eol();
                 }
                 if (sectionSubInfo_[ii]._FunctionTag == 3)
@@ -1154,10 +1190,10 @@ void fileStructure::printElement(stringBuf &sb, sectionInfo &sectionInfo__, bool
                         sb.append("active");
                         break;
                     case 1:
-                        sb.append("active with table[").append(sectionSubInfo_[ii]._TypeParams[0]).append("]");
+                        sb.append("passive");
                         break;
                     case 2:
-                        sb.append("passive");
+                        sb.append("active with table[").append(sectionSubInfo_[ii]._TypeParams[0]).append("]");
                         break;
                     case 3:
                         sb.append("declare");

@@ -7,7 +7,7 @@ void wasmDecompiler::metaTagClear()
     metaTagCache.clear();
 }
 
-void wasmDecompiler::metaTagAdd(int type, int idx, int idxx, std::string name)
+void wasmDecompiler::metaTagAdd(int section, int type, int idx, int idxx, std::string name)
 {
     if (name.empty())
     {
@@ -15,6 +15,7 @@ void wasmDecompiler::metaTagAdd(int type, int idx, int idxx, std::string name)
     }
 
     metaTagDef _;
+    _.section = section;
     _.type = type;
     _.idx = idx;
     _.idxx = idxx;
@@ -32,6 +33,7 @@ void wasmDecompiler::metaTagAdd(int type, int idx, int idxx, std::string name)
         int sysnameSize = _.sysname.size();
         if ((sysnameSize >= 8) && (_.sysname.substr(0, 8) == "function")) isSpecialName = true;
         if ((sysnameSize >= 6) && (_.sysname.substr(0, 6) == "global")) isSpecialName = true;
+        if ((sysnameSize >= 5) && (_.sysname.substr(0, 5) == "label")) isSpecialName = true;
         if ((sysnameSize >= 5) && (_.sysname.substr(0, 5) == "local")) isSpecialName = true;
         if ((sysnameSize >= 5) && (_.sysname.substr(0, 5) == "stack")) isSpecialName = true;
         if ((sysnameSize >= 5) && (_.sysname.substr(0, 5) == "tempp")) isSpecialName = true;
@@ -60,7 +62,7 @@ void wasmDecompiler::metaTagRemoveLast(int n)
     }
 }
 
-std::string wasmDecompiler::metaTagGetInfo(int vecIdx)
+std::string wasmDecompiler::metaTagGetInfo(int section, int vecIdx)
 {
     if (vecIdx < metaTag.size())
     {
@@ -70,6 +72,8 @@ std::string wasmDecompiler::metaTagGetInfo(int vecIdx)
         {
             case 0: info = "module \"" + _.name + "\""; break;
             case 1: info = "function[" + std::to_string(_.idx) + "] \"" + _.name + "\""; break;
+            case 2: info = "function[" + std::to_string(_.idx) + "].local[" + std::to_string(_.idxx) + "] \"" + _.name + "\""; break;
+            //case 3: info = "label[" + std::to_string(_.idx) + "] \"" + _.name + "\""; break;
             case 4: info = "type[" + std::to_string(_.idx) + "] \"" + _.name + "\""; break;
             case 5: info = "table[" + std::to_string(_.idx) + "] \"" + _.name + "\""; break;
             case 6: info = "memory[" + std::to_string(_.idx) + "] \"" + _.name + "\""; break;
@@ -77,7 +81,6 @@ std::string wasmDecompiler::metaTagGetInfo(int vecIdx)
             case 8: info = "elem[" + std::to_string(_.idx) + "] \"" + _.name + "\""; break;
             case 9: info = "data[" + std::to_string(_.idx) + "] \"" + _.name + "\""; break;
             case 11: info = "tag[" + std::to_string(_.idx) + "] \"" + _.name + "\""; break;
-            case 2: info = "function[" + std::to_string(_.idx) + "].local" + std::to_string(_.idxx) + " \"" + _.name + "\""; break;
 
             case 101: info = "import_function[" + std::to_string(_.idx) + "] \"" + _.name + "\""; break;
             case 201: info = "export_function[" + std::to_string(_.idx) + "] \"" + _.name + "\""; break;
@@ -90,6 +93,11 @@ std::string wasmDecompiler::metaTagGetInfo(int vecIdx)
 
             case 106: info = "import_memory[" + std::to_string(_.idx) + "] \"" + _.name + "\""; break;
             case 206: info = "export_memory[" + std::to_string(_.idx) + "] \"" + _.name + "\""; break;
+        }
+
+        if (_.section != section)
+        {
+            return "#";
         }
 
         if (_.type >= 100)
@@ -169,17 +177,17 @@ std::string wasmDecompiler::metaTagGet(int type, int idx, std::string name)
         if (printQuote)
         {
             name_tmp = "";
-            if (!name_tag.empty())
+            if ((!name_tag.empty()))
             {
                 if (!name_tmp.empty()) name_tmp = name_tmp + ",";
                 name_tmp = name_tmp + "\"" + name_tag + "\"";
             }
-            if (!name_exp.empty())
+            if ((!name_exp.empty()) && (name_exp != name_tag))
             {
                 if (!name_tmp.empty()) name_tmp = name_tmp + ",";
                 name_tmp = name_tmp + "\"" + name_exp + "\"";
             }
-            if (!name_imp.empty())
+            if ((!name_imp.empty()) && (name_imp != name_tag) && (name_imp != name_exp))
             {
                 if (!name_tmp.empty()) name_tmp = name_tmp + ",";
                 name_tmp = name_tmp + "\"" + name_imp + "\"";
@@ -277,6 +285,13 @@ void wasmDecompiler::metaTagValidateNames()
 std::string wasmDecompiler::correctFunctionName(std::string funcName)
 {
     std::string funcName0 = "";
+    if (funcName.size() > 0)
+    {
+        if ((funcName[0] >= '0') && (funcName[0] <= '9'))
+        {
+            funcName0.push_back('_');
+        }
+    }
     for (int i = 0; i < funcName.size(); i++)
     {
         bool std = false;

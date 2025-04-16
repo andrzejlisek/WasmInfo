@@ -286,12 +286,9 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
     bool stackSimplifiedP = false;
     bool stackSimplifiedR = false;
 
-    if (decompOptStackSimplify)
+    if ((decompOptStackSimplify) || (decompOptFold))
     {
-        //if (!decompOptFold)
-        {
-            stackSimplifiedP = true;
-        }
+        stackSimplifiedP = true;
         stackSimplifiedR = true;
     }
 
@@ -367,6 +364,19 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
                 {
                     Instr.get()->paramAdd(par0);
                 }
+
+                if (codeParamStr == "ao")
+                {
+                    Instr.get()->paramAdd(par0);
+                    Instr.get()->paramAdd(par1);
+                }
+                if (codeParamStr == "aob")
+                {
+                    Instr.get()->paramAdd(par0);
+                    Instr.get()->paramAdd(par1);
+                    Instr.get()->paramAdd(par2);
+                }
+
                 if (codeParamStr == "uu")
                 {
                     Instr.get()->paramAdd(par0);
@@ -509,7 +519,7 @@ void wasmDecompiler::addCommand(unsigned char * raw, int addr, int size, std::st
             break;
     }
 
-    if ((!decompOptStackSimplify) && (Instr.get()->returnName != "") && (codeParamStr != "16b") && (stackR__ == 1))
+    if ((!decompOptStackSimplify) && (Instr.get()->returnName != "") /*&& (codeParamStr != "16b")*/ && (stackR__ == 1))
     {
         Instr.get()->isFoldable = true;
     }

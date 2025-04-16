@@ -224,6 +224,11 @@ void fileStructure::loadNames(int setType, std::string nameText)
             wasmDecompiler_.codeDef_[setType][i].stackResultType = wasmDecompiler::fieldType_v128;
             wasmDecompiler_.codeDef_[setType][i].stackResult = "1";
         }
+        if (wasmDecompiler_.codeDef_[setType][i].stackResult == "anyref")
+        {
+            wasmDecompiler_.codeDef_[setType][i].stackResultType = wasmDecompiler::fieldType_anyref;
+            wasmDecompiler_.codeDef_[setType][i].stackResult = "1";
+        }
         if (wasmDecompiler_.codeDef_[setType][i].stackResult == "funcref")
         {
             wasmDecompiler_.codeDef_[setType][i].stackResultType = wasmDecompiler::fieldType_funcref;
@@ -244,15 +249,5 @@ void fileStructure::loadNames(int setType, std::string nameText)
             wasmDecompiler_.codeDef_[setType][i].stackResultType = wasmDecompiler::fieldTypeIgnore;
             wasmDecompiler_.codeDef_[setType][i].stackResult = "0";
         }
-
-        /*if (!wasmDecompiler_.codeDef_[setType][i].nameAsm.empty())
-        {
-            if (wasmDecompiler_.codeDef_[setType][i].stackResultType < 0)
-            {
-                std::cout << wasmDecompiler_.codeDef_[setType][i].nameAsm << "   ";
-                std::cout << wasmDecompiler_.codeDef_[setType][i].nameDecomp << "   ";
-                std::cout << wasmDecompiler_.codeDef_[setType][i].stackResult << std::endl;
-            }
-        }*/
     }
 }

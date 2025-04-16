@@ -23,6 +23,7 @@ public:
     constexpr static int fieldType_v128 = 0x7B;
     constexpr static int fieldType_u_ = 0x01;
     constexpr static int fieldType_void = 0x40;
+    constexpr static int fieldType_anyref = 0x6E;
     constexpr static int fieldType_funcref = 0x70;
     constexpr static int fieldType_externref = 0x6F;
     constexpr static int fieldType_exnref = 0x69;
@@ -54,8 +55,8 @@ public:
 
     void metaTagClear();
     void metaTagRemoveLast(int n);
-    void metaTagAdd(int type, int idx, int idxx, std::string name);
-    std::string metaTagGetInfo(int vecIdx);
+    void metaTagAdd(int section, int type, int idx, int idxx, std::string name);
+    std::string metaTagGetInfo(int section, int vecIdx);
     bool metaTagValid;
     int metaTagFunctionNumber = 0;
 
@@ -68,6 +69,7 @@ public:
 
     struct metaTagDef
     {
+        int section;
         int type;
         int idx;
         int idxx;

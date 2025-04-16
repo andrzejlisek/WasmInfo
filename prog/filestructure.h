@@ -131,6 +131,7 @@ public:
     void loadNames(int setType, std::string nameText);
 
 private:
+    int getTableType(int idx);
     int getVarTypeG(int idx);
     int getVarTypeL(int idx, int fidx_);
     int getVarTypeL(int idx, int fidx_, sectionSubInfo &sectionSubInfo__);

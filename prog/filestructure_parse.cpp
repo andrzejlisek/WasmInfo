@@ -48,7 +48,7 @@ void fileStructure::parseCustom(sectionInfo &sectionInfo__, int idx)
                         ptrx += leb128Size;
                         if (isValid)
                         {
-                            wasmDecompiler_.metaTagAdd(0, 0, 0, metaName);
+                            wasmDecompiler_.metaTagAdd(idx, 0, 0, 0, metaName);
                             lastItems++;
                         }
                     }
@@ -72,7 +72,7 @@ void fileStructure::parseCustom(sectionInfo &sectionInfo__, int idx)
                             ptrx += leb128Size;
                             if (isValid)
                             {
-                                wasmDecompiler_.metaTagAdd(metaType, metaItemIdx, 0, metaItemStr);
+                                wasmDecompiler_.metaTagAdd(idx, metaType, metaItemIdx, 0, metaItemStr);
                                 lastItems++;
                             }
                         }
@@ -98,7 +98,7 @@ void fileStructure::parseCustom(sectionInfo &sectionInfo__, int idx)
                                 ptrx += leb128Size;
                                 if (isValid)
                                 {
-                                    wasmDecompiler_.metaTagAdd(metaType, metaFunctionIdx, metaVarIdx, metaVarStr);
+                                    wasmDecompiler_.metaTagAdd(idx, metaType, metaFunctionIdx, metaVarIdx, metaVarStr);
                                     lastItems++;
                                 }
                             }
@@ -275,16 +275,16 @@ void fileStructure::parseExport(sectionInfo &sectionInfo__)
         switch (sectionSubInfo__._FunctionTag)
         {
             case 0: // Function
-                wasmDecompiler_.metaTagAdd(201, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
+                wasmDecompiler_.metaTagAdd(-1, 201, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
                 break;
             case 1: // Table
-                wasmDecompiler_.metaTagAdd(205, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
+                wasmDecompiler_.metaTagAdd(-1, 205, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
                 break;
             case 2: // Memory
-                wasmDecompiler_.metaTagAdd(206, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
+                wasmDecompiler_.metaTagAdd(-1, 206, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
                 break;
             case 3: // Global
-                wasmDecompiler_.metaTagAdd(207, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
+                wasmDecompiler_.metaTagAdd(-1, 207, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
                 break;
         }
 
@@ -344,7 +344,7 @@ void fileStructure::parseImport(sectionInfo &sectionInfo__)
                 sectionSubInfo__._CodeSize = leb128u(ptr);
                 ptr += leb128Size;
                 sectionSubInfo__._FunctionIdx = parseFunctionId;
-                wasmDecompiler_.metaTagAdd(101, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
+                wasmDecompiler_.metaTagAdd(-1, 101, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
                 parseFunctionId++;
                 break;
             case 0x01: // table
@@ -367,7 +367,7 @@ void fileStructure::parseImport(sectionInfo &sectionInfo__)
                     sectionSubInfo__._TypeReturn.push_back(-1);
                 }
                 sectionSubInfo__._FunctionIdx = parseTableId;
-                wasmDecompiler_.metaTagAdd(105, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
+                wasmDecompiler_.metaTagAdd(-1, 105, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
                 parseTableId++;
                 break;
             case 0x02: // memory
@@ -393,7 +393,7 @@ void fileStructure::parseImport(sectionInfo &sectionInfo__)
                 }
 
                 sectionSubInfo__._FunctionIdx = parseMemoId;
-                wasmDecompiler_.metaTagAdd(106, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
+                wasmDecompiler_.metaTagAdd(-1, 106, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
                 parseMemoId++;
                 break;
             case 0x03: // global
@@ -406,7 +406,7 @@ void fileStructure::parseImport(sectionInfo &sectionInfo__)
                 sectionSubInfo__._TypeReturn.push_back(raw[ptr]);
                 ptr++;
                 sectionSubInfo__._FunctionIdx = parseGlobalId;
-                wasmDecompiler_.metaTagAdd(107, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
+                wasmDecompiler_.metaTagAdd(-1, 107, sectionSubInfo__._FunctionIdx, 0, sectionSubInfo__._FunctionName);
                 parseGlobalId++;
                 break;
         }
@@ -676,8 +676,11 @@ void fileStructure::parseMemory(sectionInfo &sectionInfo__)
             sectionSubInfo__._CodeLocalSize.push_back(-1);
         }
 
+        sectionSubInfo__._FunctionIdx = parseMemoId;
         sectionSubInfo__.ItemSize = ptr - sectionSubInfo__.ItemAddr;
         sectionSubInfo_.push_back(sectionSubInfo__);
+
+        parseMemoId++;
     }
     sectionInfo__.ParseStatus = (sectionInfo__.Size == (ptr - sectionInfo__.Addr)) ? 1 : 0;
 }

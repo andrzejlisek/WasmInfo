@@ -58,7 +58,7 @@ void wasmDecompiler::convertBlockToLabels()
                 int i_begin0 = i;
                 int i_end0 = i;
 
-                std::string labelName = "__label_end__";
+                std::string labelName = "label_end";
                 if (depthToFind[depthToFindI] > 0)
                 {
                     // Find block begin
@@ -90,10 +90,10 @@ void wasmDecompiler::convertBlockToLabels()
                     {
                         case 1:
                         case 2:
-                            labelName = "__label_" + std::to_string(labelCounter) + "_below__";
+                            labelName = "label_" + std::to_string(labelCounter) + "_below";
                             break;
                         case 3:
-                            labelName = "__label_" + std::to_string(labelCounter) + "_above__";
+                            labelName = "label_" + std::to_string(labelCounter) + "_above";
                             break;
                     }
 
@@ -175,7 +175,7 @@ void wasmDecompiler::convertBlockToLabels()
     // Insert end label instruction
     if (labelEndUsed)
     {
-        std::string labelName = "__label_end__";
+        std::string labelName = "label_end";
         WDF.additionalInstr(0, "", labelName + ":", 0);
         std::shared_ptr<wasmDecompilerFunction> Instr = WDF.params[WDF.params.size() - 1];
         WDF.params.pop_back();

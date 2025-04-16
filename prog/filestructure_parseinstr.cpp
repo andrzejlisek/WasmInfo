@@ -159,15 +159,55 @@ int fileStructure::parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__)
         InstrSize += leb128Size;
     }
 
-    if (instrParamType == "uub")
+    if (instrParamType == "ao")
     {
         instrParamType = "";
         InstrSize = 1;
-        codeInstr_.Param0 = std::to_string(leb128u(ptr + InstrSize));
-        InstrSize += leb128Size;
-        codeInstr_.Param1 = std::to_string(leb128u(ptr + InstrSize));
-        InstrSize += leb128Size;
-        codeInstr_.Param2 = std::to_string((int)(raw[ptr + InstrSize]));
+        if (raw[ptr + InstrSize] & 0b01000000)
+        {
+            codeInstr_.Param0 = std::to_string((int)(raw[ptr + InstrSize] & 0b00111111));
+            InstrSize++;
+
+            codeInstr_.Param0 = "memory[" + std::to_string(leb128u(ptr + InstrSize)) + "], " + codeInstr_.Param0;
+            InstrSize += leb128Size;
+
+            codeInstr_.Param1 = std::to_string(leb128u(ptr + InstrSize));
+            InstrSize += leb128Size;
+        }
+        else
+        {
+            codeInstr_.Param0 = "memory[0], " + std::to_string((int)raw[ptr + InstrSize]);
+            InstrSize++;
+
+            codeInstr_.Param1 = std::to_string(leb128u(ptr + InstrSize));
+            InstrSize += leb128Size;
+        }
+    }
+
+    if ((instrParamType == "uub") || (instrParamType == "aob"))
+    {
+        instrParamType = "";
+        InstrSize = 1;
+        if (raw[ptr + InstrSize] & 0b01000000)
+        {
+            codeInstr_.Param0 = std::to_string((int)(raw[ptr + InstrSize] & 0b00111111));
+            InstrSize += leb128Size;
+
+            codeInstr_.Param0 = "memory[" + std::to_string(leb128u(ptr + InstrSize)) + "], " + codeInstr_.Param0;
+            InstrSize += leb128Size;
+
+            codeInstr_.Param1 = std::to_string(leb128u(ptr + InstrSize));
+            InstrSize += leb128Size;
+            codeInstr_.Param2 = std::to_string((int)(raw[ptr + InstrSize]));
+        }
+        else
+        {
+            codeInstr_.Param0 = "memory[0], " + std::to_string((int)raw[ptr + InstrSize]);
+            InstrSize += leb128Size;
+            codeInstr_.Param1 = std::to_string(leb128u(ptr + InstrSize));
+            InstrSize += leb128Size;
+            codeInstr_.Param2 = std::to_string((int)(raw[ptr + InstrSize]));
+        }
         InstrSize += 1;
     }
 
@@ -362,6 +402,23 @@ int fileStructure::parseInstruction(int ptr, sectionSubInfo &sectionSubInfo__)
         case 0x23: // global.get
             codeInstr_.stackR_ = wasmDecompiler_.valueTypeName(wasmDecompiler_.dataFieldDictionaryGetType("global", atoi(codeInstr_.Param0.c_str())) & 255);
             wasmDecompiler_.currentStackPush(wasmDecompiler_.valueTypeNumber(codeInstr_.stackR_));
+            break;
+
+        case 0x25: // table.get
+            {
+                if (!wasmDecompiler_.currentStackPop())
+                {
+                    codeInstr_.errorMsg = codeInstr_.errorMsg + " !!! STACK POP ERROR !!!";
+                }
+
+                int tableTypeNum = 0x6E;
+                if (getTableType(atoi(codeInstr_.Param0.c_str())))
+                {
+                    tableTypeNum = getTableType(atoi(codeInstr_.Param0.c_str()));
+                }
+                codeInstr_.stackR_ = wasmDecompiler_.valueTypeName(tableTypeNum);
+                wasmDecompiler_.currentStackPush(wasmDecompiler_.valueTypeNumber(codeInstr_.stackR_));
+            }
             break;
 
         case 0x1B: // select
