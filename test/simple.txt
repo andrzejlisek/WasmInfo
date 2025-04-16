@@ -1,0 +1,84 @@
+(module
+
+  (import "console" "log" (func $log (param i32)))
+  (memory $memory 1)
+  (export "memory" (memory $memory))
+
+  (global $var0 (mut i32) (i32.const 0))
+  (global $var1 (mut i32) (i32.const 0))
+  (global $var2 (mut i64) (i64.const 0))
+
+  (global $var3 (mut f64) (f64.const 3.14159))
+  (global $var4 f64 (f64.const 3.14159))
+
+  (func (export "testAddSubMul") (param i32 i32) (result i32)
+    local.get 1
+    local.get 0
+    i32.add
+    local.get 0
+    local.get 1
+    i32.sub
+    i32.mul
+  )
+
+  (func (export "addTest") (param i32 i32 i64) (result i32 i32)
+    local.get 0
+    global.get 1
+    i32.add
+    global.get 0
+    local.get 1
+    i32.sub
+    global.get 2
+    local.get 2
+    i64.add
+    drop
+  )
+
+  (func (export "addTwoParams") (param i32 i32) (result i32 i32)
+    local.get 0
+    local.get 1
+    i32.add
+    local.get 0
+    local.get 1
+    i32.sub
+  )
+
+  (func (export "addTwoParams2") (param i32 i32) (result i32 i32)
+    (local $var1 i32)
+    (local $var2 i32)
+    local.get 0
+    local.get 1
+    i32.add
+    local.set $var1
+    local.get 0
+    local.get 1
+    i32.sub
+    local.set $var2
+    local.get $var1
+    local.get $var2
+  )
+
+  (func (export "addTwo") (param i32 i32)
+    v128.const i64x2 1 3
+    v128.const i64x2 5 9
+ 
+    i8x16.shuffle 4 5 7 8 5 4 5 5 5 5 5 5 5 1 12 3 
+
+    i32.const 474
+    v128.load16_splat
+    
+    i8x16.extract_lane_u 2
+    
+    v128.const i64x2 5 9
+    v128.load64_lane 1
+    
+    i32.const 741
+    v128.load64_zero
+    
+    drop
+    drop
+    drop
+  )
+ 
+)
+

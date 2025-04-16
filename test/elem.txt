@@ -1,0 +1,40 @@
+(module
+  (table $table0 10 funcref)
+  (table $table1 10 funcref)
+  (table $table2 10 funcref)
+
+  (func $func0 (result i32)
+    i32.const 21)
+
+  (func $func1 (result i32)
+    i32.const 42)
+
+  (func $func2 (result i32)
+    i32.const 84)
+
+  (func $func3 (result i32)
+    i32.const 168)
+
+  ;; Active segment
+  (elem (i32.const 100) $func1 $func2)
+  (elem (table $table0) (i32.const 101) $func1 $func2)
+  (elem (table $table0) (i32.const 102) funcref)
+  (elem (table $table0) (i32.const 103))
+
+  ;; Passive segments
+  (elem func $func3)
+  (elem funcref)
+
+  ;; Active segments with table index
+  (elem (table $table1) (i32.const 106) $func1 $func2)
+  (elem (table $table1) (i32.const 107) funcref)
+  (elem (table $table1) (i32.const 108))
+  (elem (table $table2) (i32.const 109) $func1 $func2)
+  (elem (table $table2) (i32.const 110) funcref)
+  (elem (table $table2) (i32.const 111))
+
+  ;; Declare segment
+  (elem declare funcref (ref.func $func1))
+  (elem declare funcref (ref.func $func2) (ref.func $func3))
+)
+

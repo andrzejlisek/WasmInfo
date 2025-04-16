@@ -1,0 +1,72 @@
+(module
+
+
+
+  (func (export "TestBlock") (param i64) (result i32)
+    block
+      i32.const 0
+      drop
+    end
+
+    i32.const 2
+    block (param i32) (result i32)
+      i32.const 1
+      drop
+    end
+    drop
+
+    i32.const 9
+    block (result i32)
+      i32.const 4
+      i32.const 3
+      drop
+    end
+    drop
+
+    i32.const 8
+    block (result i32 i32)
+      i32.const 7
+      i32.const 6
+      i32.const 5
+      drop
+    end
+    drop
+    drop
+    drop
+  )
+
+
+  (func (export "TestLoop") (param i64) (result i32)
+    loop
+      i32.const 0
+      drop
+    end
+
+    i32.const 2
+    loop (param i32) (result i32)
+      i32.const 1
+      drop
+    end
+    drop
+
+    i32.const 9
+    loop (result i32)
+      i32.const 4
+      i32.const 3
+      drop
+    end
+    drop
+
+    i32.const 8
+    loop (result i32 i32)
+      i32.const 7
+      i32.const 6
+      i32.const 5
+      drop
+    end
+    drop
+    drop
+    drop
+  )
+)
+

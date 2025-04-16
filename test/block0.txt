@@ -1,0 +1,126 @@
+(module
+
+  (func (export "blockX")
+    i32.const 1
+    block
+      i32.const 2
+      drop
+    end
+    drop
+  )
+
+  (func (export "blockParam")
+    i32.const 1
+    block (param i32)
+      i32.const 2
+      drop
+      drop
+    end
+  )
+
+  (func (export "blockParamParam")
+    i32.const 9
+    i32.const 1
+    i32.const 11
+    block (param i32 i32)
+      i32.const 2
+
+      drop
+      drop
+      drop
+      i32.const 23
+      i32.const 22
+      i32.const 21
+
+      drop
+      drop
+      drop
+    end
+    drop
+  )
+  
+  (func (export "blockResult")
+    i32.const 1
+    block (result i32)
+      i32.const 2
+    end
+    drop
+    drop
+  )
+
+  (func (export "blockResultResult")
+    i32.const 9
+    i32.const 1
+    block (result i32 i32)
+      i32.const 2
+      i32.const 12
+
+      drop
+      drop
+      i32.const 22
+      i32.const 21
+
+    end
+    drop
+    drop
+    drop
+    drop
+  )
+
+  (func (export "blockParamResult")
+    i32.const 1
+    block (param i32) (result i32)
+      i32.const 2
+      drop
+    end
+    drop
+  )
+
+  (func (export "blockParamParamResult")
+    i32.const 1
+    i32.const 11
+    block (param i32 i32) (result i32)
+      i32.const 2
+      drop
+      drop
+    end
+    drop
+  )
+
+  (func (export "blockParamResultResult")
+    i32.const 1
+    block (param i32) (result i32 i32)
+      i32.const 2
+      i32.const 12
+      drop
+    end
+    drop
+    drop
+  )
+
+  (func (export "blockParamParamResultResult")
+    i32.const 9
+    i32.const 1
+    i32.const 11
+    block (param i32 i32) (result i32 i32)
+      i32.const 2
+      i32.const 12
+      
+      drop
+      drop
+      drop
+      drop
+      i32.const 24
+      i32.const 23
+      i32.const 22
+      i32.const 21
+      
+      drop
+      drop
+    end
+    drop
+    drop
+    drop
+  )
+)
+

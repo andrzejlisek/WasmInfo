@@ -1,0 +1,135 @@
+(module
+
+  (func (export "block1") (result i32)
+    i32.const 1
+    i32.const 2
+    i32.const 3
+    block
+      i32.const 11
+      i32.const 12
+      i32.const 13
+      drop
+      drop
+      drop
+      unreachable
+    end
+    drop
+    drop
+  )
+
+  (func (export "block2") (result i32)
+    i32.const 1
+    i32.const 2
+    i32.const 3
+    block
+      i32.const 11
+      i32.const 12
+      i32.const 13
+      drop
+      drop
+      unreachable
+      drop
+    end
+    drop
+    drop
+  )
+
+  (func (export "block3") (result i32)
+    i32.const 1
+    i32.const 2
+    i32.const 3
+    block
+      i32.const 11
+      i32.const 12
+      i32.const 13
+      unreachable
+      drop
+      drop
+      drop
+    end
+    drop
+    drop
+  )
+  
+  (func (export "block4") (result i32)
+    i32.const 1
+    i32.const 2
+    i32.const 3
+    block
+      i32.const 11
+      unreachable
+      i32.const 12
+      i32.const 13
+      drop
+      drop
+      drop
+    end
+    drop
+    drop
+  )
+
+  (func (export "block11") (result i32)
+    i32.const 1
+    i32.const 2
+    block (result i32)
+      i32.const 11
+      i32.const 12
+      i32.const 13
+      drop
+      drop
+      drop
+      unreachable
+    end
+    drop
+    drop
+  )
+
+  (func (export "block12") (result i32)
+    i32.const 1
+    i32.const 2
+    block (result i32)
+      i32.const 11
+      i32.const 12
+      i32.const 13
+      drop
+      drop
+      unreachable
+      drop
+    end
+    drop
+    drop
+  )
+
+  (func (export "block13") (result i32)
+    i32.const 1
+    i32.const 2
+    block (result i32)
+      i32.const 11
+      i32.const 12
+      i32.const 13
+      unreachable
+      drop
+      drop
+      drop
+    end
+    drop
+    drop
+  )
+  
+  (func (export "block14") (result i32)
+    i32.const 1
+    i32.const 2
+    block (result i32)
+      i32.const 11
+      unreachable
+      i32.const 12
+      i32.const 13
+      drop
+      drop
+      drop
+    end
+    drop
+    drop
+  )
+)
+

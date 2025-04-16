@@ -1,0 +1,57 @@
+(module $TYPE0_module
+
+  (import "env" "ext_func_import" (func $ext_func_name (param i32) (result i32)))
+
+  (import "env" "ext_func_import_x" (func (param i32) (result i32)))
+
+  (global $ext_global_name (import "env" "ext_global_import") i32)
+
+  (global (import "env" "ext_global_import_x") i32)
+
+  (memory $ext_memo_name (import "env" "ext_memo_import") 1 2)
+  (memory (import "env" "ext_memo_import_x") 1 2)
+
+
+  (table $ext_table_name (import "env" "ext_table_import") 32 funcref)
+  (table (import "env" "ext_table_import_x") 32 funcref)
+
+  (table $int_table_name (export "int_table_export") 32 funcref)
+  (table (export "int_table_export_x") 32 funcref)
+  (table $some_table_name 32 funcref)
+
+
+
+  (memory $int_memo_name (export "int_memo_export") 1 2)
+  (memory (export "int_memo_export_x") 1 2)
+
+  (memory $some_memo_name 1 2)
+
+
+  (func $int_func_name (export "int_func_export") (param $value i32) (result i32)
+    (local $intermediate i32)
+    local.get $value
+    i32.const 5
+    i32.add
+    local.set $intermediate
+    local.get $intermediate
+  )
+
+  (func (export "int_func_export_X") (param $value i32) (result i32)
+    (local $intermediate i32)
+    local.get $value
+    i32.const 5
+    i32.add
+    local.set $intermediate
+    local.get $intermediate
+  )
+
+  (global $int_global_name (export "int_global_export") i32 (i32.const 10))
+
+  (global (export "int_global_export_x") i32 (i32.const 10))
+
+  (global $some_global_name (mut i32) (i32.const 0))
+
+  (global (mut i32) (i32.const 0))
+
+)
+

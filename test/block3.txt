@@ -1,0 +1,38 @@
+(module
+
+  (tag $exc0)
+  (tag $exc1 (param i32))
+  (tag $exc2 (param i32 i32))
+
+  (func (export "blockResult")
+    i32.const 1
+    block (result i32)
+      i32.const 2
+    end
+    drop
+    drop
+  )
+
+  (func (export "loopResult")
+    i32.const 1
+    loop (result i32)
+      i32.const 2
+    end
+    drop
+    drop
+  )
+
+  (func (export "ifResult")
+    i32.const 1
+    (if (result i32)
+        (then
+          i32.const 2
+        )
+        (else
+          i32.const 3
+        )
+    )
+    drop
+  )
+)
+

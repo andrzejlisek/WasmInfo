@@ -1,0 +1,116 @@
+(module
+
+  (tag $exception0)
+  (tag $exception1 (param i32))
+  (tag $exception2 (param i32 i32))
+
+  (func (export "TryCatch1") (param i64) (result i32)
+    try (result i32 i64)
+      i32.const 0
+      i64.const 12
+    catch_all
+      i32.const 3
+      i64.const 34
+      rethrow 0
+    end
+    drop
+  )
+ 
+ 
+
+  (func (export "TryCatch2") (param i64) (result i32)
+    try (result i32 i32)
+      i32.const 1
+      i32.const 2
+    catch $exception1
+      i32.const 3
+    catch $exception2
+    catch 1
+      i32.const 4
+    catch $exception0
+      i32.const 7
+      i32.const 8
+    catch_all
+      i32.const 5
+      i32.const 6
+    end
+    drop
+  )
+
+  (func (export "TryCatch3") (param i64) (result i32)
+    try
+    catch $exception1
+      drop
+    catch $exception2
+      drop
+      rethrow 0
+      drop
+    catch 1
+      drop
+    catch $exception0
+    catch_all
+    end
+    i32.const 7
+  )
+
+  (func (export "TryCatch4") (param i64) (result i32)
+    (throw $exception2 (i32.const 101) (i32.const 102))
+    (throw $exception1 (i32.const 100))
+    i32.const 7
+  )
+  
+  
+  (func (export "TryCatch5") (param i64) (result i32)
+    i32.const 11
+    i32.const 12
+    try (param i32 i32) (result i32 i32)
+      i32.const 13
+      i32.const 14
+      drop
+      drop
+    catch_all
+      i32.const 15
+      i32.const 16
+    end
+    drop
+  )
+
+
+
+  (func (export "TryCatch6") (param i64) (result i32)
+    i32.const 11
+    i32.const 12
+    try (param i32 i32) (result i32 i32)
+      i32.const 13
+      i32.const 0
+      (if
+         (then
+           i32.const 19
+           throw $exception1
+           drop
+         )
+      )
+      drop
+      i32.const 14
+
+      i32.const 0
+      (if
+         (then
+           i32.const 18
+           i32.const 17
+           throw $exception2
+           drop
+           drop
+         )
+      )
+
+      drop
+    catch_all
+      i32.const 15
+      i32.const 16
+      rethrow 0
+    end
+    drop
+  )
+)
+

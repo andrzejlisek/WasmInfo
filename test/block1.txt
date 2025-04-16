@@ -1,0 +1,73 @@
+(module
+
+  (tag $exc0)
+  (tag $exc1 (param i32))
+  (tag $exc2 (param i32 i32))
+
+  (func (export "blockX")
+    i32.const 1
+    block
+      i32.const 2
+      drop
+    end
+    drop
+  )
+
+  (func (export "loopX")
+    i32.const 1
+    loop
+      i32.const 2
+      drop
+    end
+    drop
+  )
+
+  (func (export "ifXX")
+    i32.const 1
+    (if
+        (then
+          i32.const 2
+          drop
+        )
+    )
+  )
+
+  (func (export "ifX")
+    i32.const 1
+    (if
+        (then
+          i32.const 2
+          drop
+        )
+        (else
+          i32.const 3
+          drop
+        )
+    )
+  )
+
+  (func (export "tryX")
+    i32.const 1
+    try
+      i32.const 2
+      drop
+    catch $exc0
+      i32.const 3
+      drop
+    catch $exc1
+      i32.const 4
+      drop
+      drop
+    catch $exc2
+      i32.const 5
+      drop
+      drop
+      drop
+    catch_all
+      i32.const 6
+      drop
+    end
+    drop
+  )
+)
+

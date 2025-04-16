@@ -1,0 +1,92 @@
+(module
+
+  (import "env" "greete0" (func $greete0))
+  (import "env" "greete1" (func $greete1 (result i32)))
+  (import "env" "greete2" (func $greete2 (result i32 i32)))
+
+  (import "env" "greete0x" (func $greete0x (param i32)))
+  (import "env" "greete1x" (func $greete1x (param i32) (result i32)))
+  (import "env" "greete2x" (func $greete2x (param i32 i32) (result i32 i32)))
+
+
+  (func $greeti0 (export "greeti0")
+  )
+
+  (func $greeti1 (export "greeti1") (result i32)
+    i32.const 1
+  )
+
+  (func $greeti2 (export "greeti2") (result i32 i32)
+    i32.const 1
+    i32.const 2
+  )
+
+
+  (func $grext (export "greet_ext")
+    call $greete0
+
+    call $greete1
+    drop
+
+    call $greete2
+
+    call $greete2x
+
+    drop
+
+    call $greete1x
+
+    call $greete0x
+  )
+
+  (func $grint (export "greet_int")
+    call $greeti0
+
+    call $greeti1
+    drop
+
+    call $greeti2
+    drop
+    drop
+  )
+
+
+
+  (func $ret0 (export "ret0")
+    ;;return
+  )
+
+  (func $ret1 (export "ret1") (result i32)
+    i32.const 1
+    ;;return
+  )
+
+  (func $ret2 (export "ret2") (result i32 i32)
+    i32.const 1
+    i32.const 2
+    ;;return
+  )
+
+
+
+  (func $par1 (export "par1") (param i32)
+    i32.const 1
+    drop
+  )
+
+  (func $par2 (export "par2") (param i32 i32)
+    i32.const 1
+    drop
+  )
+
+
+  (func $partest (export "partest")
+    i32.const 1
+    i32.const 2
+    i32.const 3
+    call $par1
+    call $par2
+  )
+  
+)
+

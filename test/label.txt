@@ -1,0 +1,102 @@
+(module
+
+  (import "console" "log" (func $log (param i32)))
+  (memory $memory 1)
+  (export "memory" (memory $memory))
+
+  (global $var0 (mut i32) (i32.const 0))
+  (global $var1 (mut i32) (i32.const 0))
+  (global $var2 (mut i64) (i64.const 0))
+
+  (global $var3 (mut f64) (f64.const 3.14159))
+  (global $var4 f64 (f64.const 3.14159))
+
+  (func (export "test_nobranch") (param $num i32)
+     (block $d1
+        (block $d2
+          (block $d3
+             local.get $num
+             drop
+          )
+          (block $d4
+             local.get $num
+             drop
+          )
+          ;;br 1
+        )
+     )
+  )
+
+
+  (func (export "test_branch") (param $num i32)
+     (block $d1
+        (block $d2
+          (block $d3
+
+             local.get $num
+             br_if 0
+
+             local.get $num
+             br_if 0
+
+             local.get $num
+             br_if 1
+
+             ;;br 2
+          )
+          (block $d4
+             local.get $num
+             ;;br 0
+             drop
+          )
+          ;;br 1
+        )
+     )
+  )
+
+
+  (func (export "branch_table_block") (param $num i32) (result i32)
+    (block
+      (block
+        (block
+          (block
+            local.get $num
+            br_table 0 1 2 3
+          )
+          i32.const 10
+          return
+        )
+        i32.const 20
+        return
+      )
+      i32.const 30
+      return
+    )
+    i32.const 40
+    return
+  )
+
+  (func (export "branch_table_loop") (param $num i32) (result i32)
+    (loop
+      (loop
+        (loop
+          (loop
+            local.get $num
+            br_table 0 1 2 3
+          )
+          i32.const 10
+          return
+        )
+        i32.const 20
+        return
+      )
+      i32.const 30
+      return
+    )
+    i32.const 40
+    return
+  )
+
+  
+)
+

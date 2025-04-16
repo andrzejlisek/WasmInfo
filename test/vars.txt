@@ -1,0 +1,80 @@
+(module
+  (import "console" "log" (func $log (param i32)))
+  ;; import a global variable from js
+  (global $from_js (import "env" "from_js") i32)
+
+  ;; create a global variable
+  (global $from_wasm (export "env_from_wasm") i32 (i32.const 10))
+
+  (global $var (mut i32) (i32.const 0))
+
+  (global $varx i32 (i32.const 0))
+  
+  (func $localDeclGetSet (export "localDeclGetSet")
+    (local $var i32) ;; create a local variable named $var
+    (local.set $var (i32.const 10)) ;; set $var to 10
+    local.get $var ;; load $var onto the stack
+    call $log ;; log the result
+  )
+  (func $localTee (export "localTee")
+
+    (local $var i32) ;; create a local variable named $var
+    (i32.const 10) ;; load `10` onto the stack
+    local.tee $var ;; set the $var to `10` and keep `10` on the stack
+    call $log ;; log the top item on the stack (10)
+  )
+  (func $globalDecl (export "globalDecl")
+    ;; load both global variables onto the stack
+    global.get $from_js
+    global.get $from_wasm
+
+    i32.add ;; add up both globals
+    call $log ;; log the result
+  )
+  (func $globalGetSet (export "globalGetSet")
+    i32.const 10 ;; load a number onto the stack
+    global.set $var ;; set the $var
+
+    global.get $var ;; load $var onto the stack
+    call $log ;; log the result
+  )
+
+
+
+  (func (export "get_90") (result i32)
+    ;; load 10 onto the stack
+    i32.const 10
+    ;; load 90 onto the stack
+    i32.const 90
+    ;; return the second value (90); the first is discarded
+    return
+  )
+
+  (func (export "get_10_1") (result i32)
+    i32.const 10
+    return
+  )
+
+  (func (export "get_10_1x") (result i32)
+    i32.const 10
+    return
+    i32.const 20
+  )
+
+  (func (export "get_10_2") (result i32)
+    i32.const 10
+  )
+
+  (func (export "get_10_90_1") (result i32 i32)
+    i32.const 10
+    i32.const 90
+    return
+  )
+
+  (func (export "get_10_90_2") (result i32 i32)
+    i32.const 10
+    i32.const 90
+  )
+
+)
+

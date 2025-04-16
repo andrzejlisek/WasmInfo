@@ -1,0 +1,40 @@
+(module
+
+ (start 0)
+  (import "console" "log" (func $log ))
+
+  (@custom "name" "my_custom_section")
+
+  (@custom "metadata" "version=1.0;author=John Doe")
+
+
+  (memory 1)
+
+  (global $var1 (mut i32) (i32.const 12))
+
+  (global $var2 i32 (i32.const 34))
+
+  (data (i32.const 0) "Hello")
+
+  (data (i32.const 10) "\01\00\00\00\02\00\00\00")
+
+  (data (i32.const 20)
+    "\0A\00\00\00"    ;; id
+    "user"            ;; name
+    "\01"             ;; status
+  )
+
+  (data "Hello")
+
+  (data "\01\00\00\00\02\00\00\00")
+
+  (data 
+    "\0A\00\00\00"    ;; id
+    "user"            ;; name
+    "\01"             ;; status
+  )
+
+  (@custom "xyz" "QWERTY")
+
+)
+

@@ -1,0 +1,77 @@
+(module $NAME0_module
+
+  (import "env" "jstimes3x" (func $NAME1_jstimes3x (param i32) (result i32)))
+  (import "env" "jstimes3" (func $NAME1_jstimes3 (type $NAME4_int2int)))
+  (type $NAME4_int2int (func (param i32) (result i32)))
+
+  (type $NAME4_data_type (func (param i32 i32 i32 i32 i32 i32) (result i32)))
+
+
+  (global $NAME7_global_mut (mut i32) (i32.const 0))
+
+  (global $NAME7_global i32 (i32.const 0))
+
+  (memory $NAME6_memory 1 2)
+  (tag $NAME11_tag0)
+  (tag $NAME11_tag1 (param i32))
+  (tag $NAME11_tag2 (param i32 i32))
+
+
+  (func $NAME1_process_data (param $NAME2_value i32) (result i32)
+    (local $NAME2_intermediate i32)
+
+    local.get $NAME2_value
+    i32.const 5
+    i32.add
+    local.set $NAME2_intermediate
+
+    local.get $NAME2_intermediate
+  )
+
+  (type $TYPE8_struct (struct
+    (field $TYPE8_struct_x f32)
+    (field $TYPE8_struct_y (mut f32))
+  ))
+
+  (type $TYPE8_arrmut (array (mut i32)))
+
+  (type $TYPE8_arr (array v128))
+  (type $TYPE8_arr0 (array (mut f64)))
+
+
+
+  (func $NAME1_test
+    (block $NAME3_label
+      br $NAME3_label
+    )
+  )
+
+
+  (type $NAME4_point (struct (field $x (mut i32)) (field $y i32)))
+  (type $NAME4_line (struct
+    (field $NAMEx_start (ref $NAME4_point))
+    (field $NAMEx_end (ref $NAME4_point))
+    (field $NAMEx_start (ref $NAME4_point))
+  ))
+
+
+
+  (func $NAME1_wasmtimes2 (type $NAME4_int2int)
+      (i32.add (local.get 0) (local.get 0))
+  )
+
+  (func $NAME1_wasmtimes2x (type $NAME4_int2int)
+      local.get 0
+      global.set $NAME7_global_mut
+      (i32.add (global.get $NAME7_global_mut) (global.get $NAME7_global_mut))
+  )
+
+  (table $NAME5_table 32 funcref)
+
+  (elem $NAME8_element (i32.const 16) $NAME1_wasmtimes2 $NAME1_jstimes3)
+
+  (data $NAME9_data (i32.const 0) "Hello")
+
+
+)
+

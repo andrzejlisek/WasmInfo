@@ -1,0 +1,87 @@
+(module
+
+  (tag $exc0)
+  (tag $exc1 (param i32))
+  (tag $exc2 (param i32 i32))
+
+  (func (export "TryX") (param i32) (result i32)
+    i32.const 11
+    i32.const 12
+    try
+      i32.const 13
+      drop
+    catch $exc0
+      i32.const 150
+      drop
+    catch $exc1
+      drop
+    catch $exc2
+      drop
+      drop
+    catch_all
+      i32.const 15
+      drop
+    end
+    drop
+  )
+
+  (func (export "TryParam") (param i32) (result i32)
+    i32.const 11
+    i32.const 12
+    try (param i32)
+      i32.const 13
+      drop
+      drop
+    catch $exc0
+      i32.const 150
+      drop
+    catch $exc1
+      drop
+    catch $exc2
+      drop
+      drop
+    catch_all
+      i32.const 15
+      drop
+    end
+  )
+
+  (func (export "TryResult") (param i32) (result i32)
+    i32.const 11
+    i32.const 12
+    try (result i32)
+      i32.const 13
+    catch $exc0
+      i32.const 150
+    catch $exc1
+      i32.const 151
+      drop
+    catch $exc2
+      drop
+    catch_all
+      i32.const 15
+    end
+    drop
+    drop
+  )
+
+  (func (export "TryParamResult") (param i32) (result i32)
+    i32.const 11
+    i32.const 12
+    try (param i32) (result i32)
+      i32.const 13
+      drop
+    catch $exc0
+      i32.const 150
+    catch $exc1
+      i32.const 151
+      drop
+    catch $exc2
+      drop
+    catch_all
+      i32.const 15
+    end
+    drop
+  )
+)
+
